@@ -114,7 +114,7 @@ def train(opt):
             loss.backward()
             optimizer.step()
             # TODO：使用bleu-4作为评估指标 训练时不展示bleu指标，只在测试时对测试集展示bleu指标，将每一条的输出写入文件中
-            training_metrics = get_evaluation(target.cpu().numpy(), predictions.cpu().detach().numpy(), list_metrics=["accuracy"])
+            training_metrics = get_evaluation(target.view(-1).cpu().numpy(), predictions.view(opt.batch_size*opt.max_length_summary, -1).cpu().detach().numpy(), list_metrics=["accuracy"])
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
                 epoch + 1,
                 opt.num_epoches,
