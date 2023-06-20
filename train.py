@@ -103,7 +103,9 @@ def train(opt):
     num_iter_per_epoch = len(training_generator)
     for epoch in range(opt.num_epoches):
         print("###### Epoch {} start:".format(epoch + 1))
+        iter_index = 0
         for feature, target in tqdm(training_generator):
+            iter_index = iter_index + 1
             if torch.cuda.is_available():
                 feature = feature.cuda()
                 target = target.cuda()
@@ -118,7 +120,7 @@ def train(opt):
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
                 epoch + 1,
                 opt.num_epoches,
-                iter + 1,
+                iter_index,
                 num_iter_per_epoch,
                 optimizer.param_groups[0]['lr'],
                 loss, training_metrics["accuracy"]))
