@@ -124,8 +124,8 @@ def train(opt):
                 num_iter_per_epoch,
                 optimizer.param_groups[0]['lr'],
                 loss, training_metrics["accuracy"]))
-            writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter)
-            writer.add_scalar('Train/Accuracy', training_metrics["accuracy"], epoch * num_iter_per_epoch + iter)
+            writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
+            writer.add_scalar('Train/Accuracy', training_metrics["accuracy"], epoch * num_iter_per_epoch + iter_index)
         if epoch % opt.test_interval == 0:
             model.eval()
             target_bleu_file = open(bleu_path + os.sep + "target_bleu_{}.txt".format(epoch + 1), "w")
