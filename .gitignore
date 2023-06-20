@@ -1,0 +1,9 @@
+.DS_Store
+.idea
+src/data
+src/pretrained
+logs/
+trained_models/
+__pycache__/
+*.py[cod]
+*$py.class
