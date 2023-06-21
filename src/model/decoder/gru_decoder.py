@@ -89,6 +89,10 @@ class GruDecoder(nn.Module):
 
         decoder_input = torch.LongTensor([[self.bos_token_id]] * batch_size)
         decoder_outputs = torch.zeros(batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
+        if torch.cuda.is_available():
+            decoder_input = decoder_input.cuda()
+            decoder_outputs = decoder_outputs.cuda()
+
         decoder_hidden = encoder_hidden
 
         # 评估，不再使用teacher forcing，完全使用预测值作为下一次的输入
@@ -99,11 +103,13 @@ class GruDecoder(nn.Module):
             decoder_input = index
 
         # 获取输出的id
-        decoder_indices = []
-        for i in range(self.max_seq_len):
-            value, index = torch.topk(decoder_outputs[:, i, :], k=1, dim=-1)    # index: [batch_size, 1]
-            decoder_indices.append(index.view(-1).numpy())
-        # transpose 调整为按句子输出 decoder_indices[max_seq_len, batch_size]
-        decoder_indices = np.array(decoder_indices).transpose() # decoder_indices[batch_size, max_seq_len]
-        return decoder_indices
+        # decoder_indices = []
+        # for i in range(self.max_seq_len):
+        #     value, index = torch.topk(decoder_outputs[:, i, :], k=1, dim=-1)    # index: [batch_size, 1]
+        #     decoder_indices.append(index.view(-1).numpy())
+        # # transpose 调整为按句子输出 decoder_indices[max_seq_len, batch_size]
+        # decoder_indices = np.array(decoder_indices).transpose() # decoder_indices[batch_size, max_seq_len]
+
+        #   [batch_size, max_seq_len, vocal_size]
+        return decoder_outputs
 

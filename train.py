@@ -154,7 +154,7 @@ def train(opt):
             # 写入文本文件
             target_bleu_file.write(te_target_text)
             pred_bleu_file.write(te_pred_text)
-            test_metrics = get_evaluation(te_target, te_pred.numpy(), list_metrics=["accuracy"])
+            test_metrics = get_evaluation(te_target.reshape(-1), te_pred.reshape(len(te_pred) * opt.max_length_summary, -1), list_metrics=["accuracy"])
             output_file.write(
                 "Epoch: {}/{} \nTest loss: {} Test accuracy: {} \n\n".format(
                     epoch + 1, opt.num_epoches,
@@ -167,6 +167,7 @@ def train(opt):
                 te_loss, test_metrics["accuracy"]))
             writer.add_scalar('Test/Loss', te_loss, epoch)
             writer.add_scalar('Test/Accuracy', test_metrics["accuracy"], epoch)
+            torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
             model.train()
             # if te_loss + opt.es_min_delta < best_loss:
             #     best_loss = te_loss
