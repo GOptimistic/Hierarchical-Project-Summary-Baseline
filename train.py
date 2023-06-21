@@ -75,7 +75,7 @@ def train(opt):
                        "drop_last": True}
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
-                   "drop_last": False}
+                   "drop_last": True}
 
     training_set = MyDataset(opt.train_set, opt.repo_base_path, opt.pretrained_model, opt.max_length_package, opt.max_length_file, opt.max_length_method,
                  opt.max_length_token, opt.max_length_summary)
@@ -142,8 +142,8 @@ def train(opt):
                     te_predictions = model.evaluation(te_feature)
                 te_loss = criterion(te_predictions.view(opt.batch_size*opt.max_length_summary, -1), te_target.view(-1))
                 loss_ls.append(te_loss)
-                te_target_ls.extend(te_target.clone().cpu())
-                te_pred_ls.extend(te_predictions.clone().cpu())
+                te_target_ls.extend(te_target.clone().cpu().numpy())
+                te_pred_ls.extend(np.argmax(te_predictions.clone().cpu().numpy(), -1))
             te_loss = sum(loss_ls) / test_set.__len__()
             te_pred = np.array(te_pred_ls)
             te_target = np.array(te_target_ls)
@@ -152,8 +152,9 @@ def train(opt):
             te_target_text = tokenizer.batch_decode(te_target)
 
             # 写入文本文件
-            target_bleu_file.write(te_target_text)
-            pred_bleu_file.write(te_pred_text)
+            for i in range(len(te_target_text)):
+                target_bleu_file.write(te_target_text[i] + "\n")
+                pred_bleu_file.write(te_pred_text[i] + "\n")
             test_metrics = get_evaluation(te_target.reshape(-1), te_pred.reshape(len(te_pred) * opt.max_length_summary, -1), list_metrics=["accuracy"])
             output_file.write(
                 "Epoch: {}/{} \nTest loss: {} Test accuracy: {} \n\n".format(

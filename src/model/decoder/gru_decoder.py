@@ -85,10 +85,10 @@ class GruDecoder(nn.Module):
         return out, decoder_hidden
 
     def evaluation(self, encoder_hidden):
-        batch_size = encoder_hidden.size(0)  # 评估的时候和训练的batch_size不同，不适用config的配置
+        # batch_size = encoder_hidden.size(0)  # 评估的时候和训练的batch_size不同，不适用config的配置
 
-        decoder_input = torch.LongTensor([[self.bos_token_id]] * batch_size)
-        decoder_outputs = torch.zeros(batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
+        decoder_input = torch.LongTensor([[self.bos_token_id]] * self.batch_size)
+        decoder_outputs = torch.zeros(self.batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
         if torch.cuda.is_available():
             decoder_input = decoder_input.cuda()
             decoder_outputs = decoder_outputs.cuda()

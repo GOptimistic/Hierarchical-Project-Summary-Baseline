@@ -1,5 +1,6 @@
 .DS_Store
 .idea
+mini_test
 src/data
 src/pretrained
 logs/

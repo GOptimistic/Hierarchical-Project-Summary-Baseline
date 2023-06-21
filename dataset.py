@@ -34,6 +34,7 @@ class MyDataset(Dataset):
                 # 由于split_data到train.csv导致多了一列出来，本来是第1列和第9列
                 repo_full_name = row[2]
                 summary = row[10]
+                summary = summary.replace("\n", "").replace("\r", "")
                 repos.append(repo_full_name)
                 summarys.append(summary)
 
