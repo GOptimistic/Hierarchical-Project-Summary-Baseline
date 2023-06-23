@@ -46,6 +46,7 @@ def get_args():
     parser.add_argument("--max_length_token", type=int, default=30)
     parser.add_argument("--max_length_summary", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
+    parser.add_argument("--checkpoint", type=int, default="-1")
     args = parser.parse_args()
     return args
 
@@ -97,11 +98,22 @@ def train(opt):
 
     criterion = nn.NLLLoss()
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, momentum=opt.momentum)
+    epoch_finished = -1
+    if opt.checkpoint > 0:
+        checkpoint_path = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(opt.checkpoint)
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch_finished = checkpoint['epoch']
+
     best_loss = 1e9
     best_epoch = 0
     model.train()
     num_iter_per_epoch = len(training_generator)
     for epoch in range(opt.num_epoches):
+        if epoch + 1 <= epoch_finished:
+            print("###### Epoch {} has archived".format(epoch + 1))
+            continue
         print("###### Epoch {} start:".format(epoch + 1))
         iter_index = 0
         for feature, target in tqdm(training_generator):
@@ -168,7 +180,13 @@ def train(opt):
                 te_loss, test_metrics["accuracy"]))
             writer.add_scalar('Test/Loss', te_loss, epoch)
             writer.add_scalar('Test/Accuracy', test_metrics["accuracy"], epoch)
-            torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
+            # 保存模型
+            checkpoint = {"model_state_dict": model.state_dict(),
+                          "optimizer_state_dict": optimizer.state_dict(),
+                          "epoch": epoch + 1}
+            path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
+            torch.save(checkpoint, path_checkpoint)
+            # torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
             model.train()
             # if te_loss + opt.es_min_delta < best_loss:
             #     best_loss = te_loss
