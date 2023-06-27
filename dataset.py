@@ -49,7 +49,7 @@ class MyDataset(Dataset):
         # 得到embedding放在模型里，数据集里只截取token
         # self.pretrained_model = AutoModel.from_pretrained(pretrained_model)
         self.pretrained_tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
-        self.unk_id = self.pretrained_tokenizer.convert_tokens_to_ids(self.pretrained_tokenizer.unk_token)
+        self.pad_id = self.pretrained_tokenizer.convert_tokens_to_ids(self.pretrained_tokenizer.pad_token)
 
     def __len__(self):
         return len(self.summarys)
@@ -61,7 +61,7 @@ class MyDataset(Dataset):
         summary = self.pretrained_tokenizer.tokenize(summary, max_length=512, truncation=True)
         summary = self.pretrained_tokenizer.convert_tokens_to_ids(summary)
         if len(summary) < self.max_length_summary:
-            extend_tokens = [self.unk_id for _ in
+            extend_tokens = [self.pad_id for _ in
                              range(self.max_length_summary - len(summary))]
             summary.extend(extend_tokens)
         summary = summary[:self.max_length_summary]
@@ -106,20 +106,20 @@ class MyDataset(Dataset):
                     file_info.append(tokens_ids)
                 # method数量不够，补足
                 if len(file_info) < self.max_length_method:
-                    extend_methods = [[self.unk_id for _ in range(self.max_length_token)] for _ in
+                    extend_methods = [[self.pad_id for _ in range(self.max_length_token)] for _ in
                                       range(self.max_length_method - len(file_info))]
                     file_info.extend(extend_methods)
                 file_info = file_info[:self.max_length_method]
                 package_info.append(file_info)
             if len(package_info) < self.max_length_file:
-                extend_files = [[[self.unk_id for _ in range(self.max_length_token)] for _ in
+                extend_files = [[[self.pad_id for _ in range(self.max_length_token)] for _ in
                                  range(self.max_length_method)] for _ in
                                 range(self.max_length_file - len(package_info))]
                 package_info.extend(extend_files)
             package_info = package_info[:self.max_length_file]
             repo_info.append(package_info)
         if len(repo_info) < self.max_length_package:
-            extend_packages = [[[[self.unk_id for _ in range(self.max_length_token)] for _ in
+            extend_packages = [[[[self.pad_id for _ in range(self.max_length_token)] for _ in
                                  range(self.max_length_method)] for _ in
                                 range(self.max_length_file)] for _ in
                                range(self.max_length_package - len(repo_info))]
@@ -148,9 +148,10 @@ if __name__ == '__main__':
 
     CODE = "def max(a,b): if a>b: return a else return b"
     code_tokens = tokenizer.tokenize(CODE)
-    tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.eos_token]
+    tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.pad_token for i in range(5)] + [tokenizer.eos_token]
     print(tokens)
     tokens_ids = tokenizer.convert_tokens_to_ids(tokens)
+    print(tokens_ids)
     print(tokenizer.decode(tokens_ids))
 
     convert_code = tokenizer.convert_ids_to_tokens(tokens_ids)

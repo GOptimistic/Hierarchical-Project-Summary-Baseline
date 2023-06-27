@@ -156,7 +156,7 @@ def train(opt):
                 loss_ls.append(te_loss)
                 te_target_ls.extend(te_target.clone().cpu().numpy())
                 te_pred_ls.extend(np.argmax(te_predictions.clone().cpu().numpy(), -1))
-            te_loss = sum(loss_ls) / test_set.__len__()
+            te_loss = sum(loss_ls)
             te_pred = np.array(te_pred_ls)
             te_target = np.array(te_target_ls)
             # 将prediction和target的每一行内容写在两个文件中 pred.txt target.txt，再调bleu.py得到结果，每个epoch做一次测试
