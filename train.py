@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
 from src.model.Project2Seq import Project2Seq
+from src.model.Project2Seq_three_level import Project2Seq_three_level
 from src.utils import get_max_lengths, get_evaluation
 from dataset import MyDataset
 from src.model.encoder.hierarchical_att_model import HierAttNet
@@ -47,6 +48,7 @@ def get_args():
     parser.add_argument("--max_length_summary", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
+    parser.add_argument("--model_level", type=int, default="5")
     args = parser.parse_args()
     return args
 
@@ -85,7 +87,10 @@ def train(opt):
                  opt.max_length_token, opt.max_length_summary)
     test_generator = DataLoader(test_set, **test_params)
 
-    model = Project2Seq(opt)
+    if opt.model_level == 3:
+        model = Project2Seq_three_level(opt)
+    else:
+        model = Project2Seq(opt)
 
     if os.path.isdir(opt.log_path):
         shutil.rmtree(opt.log_path)

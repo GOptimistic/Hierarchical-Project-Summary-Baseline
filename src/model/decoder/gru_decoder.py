@@ -35,7 +35,7 @@ class GruDecoder(nn.Module):
             self.embedding = self.embedding.cuda()
 
     def forward(self, encoder_hidden, target):
-        # encoder_hidden [batch_size,hidden_size]
+        # encoder_hidden [1,batch_size,hidden_size]
         # target [batch_size,max_len]
 
         # 初始的全为<s>的输入
