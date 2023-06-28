@@ -155,12 +155,12 @@ def train(opt):
                 te_loss = criterion(te_predictions.view(opt.batch_size*opt.max_length_summary, -1), te_target.view(-1))
                 loss_ls.append(te_loss)
                 te_target_ls.extend(te_target.clone().cpu().numpy())
-                te_pred_ls.extend(np.argmax(te_predictions.clone().cpu().numpy(), -1))
+                te_pred_ls.extend(te_predictions.clone().cpu().numpy())
             te_loss = sum(loss_ls)
             te_pred = np.array(te_pred_ls)
             te_target = np.array(te_target_ls)
             # 将prediction和target的每一行内容写在两个文件中 pred.txt target.txt，再调bleu.py得到结果，每个epoch做一次测试
-            te_pred_text = tokenizer.batch_decode(te_pred)
+            te_pred_text = tokenizer.batch_decode(np.argmax(te_pred, -1))
             te_target_text = tokenizer.batch_decode(te_target)
 
             # 写入文本文件
