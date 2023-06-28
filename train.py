@@ -92,6 +92,7 @@ def train(opt):
     else:
         model = Project2Seq(opt)
 
+    print(model)
     if os.path.isdir(opt.log_path):
         shutil.rmtree(opt.log_path)
     os.makedirs(opt.log_path)
