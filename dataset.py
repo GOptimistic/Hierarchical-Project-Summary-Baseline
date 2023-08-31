@@ -94,9 +94,9 @@ class MyDataset(Dataset):
                     method = method.replace('\n', '').replace('\r', '').replace('\t', '')
                     # 对method进行分词
                     code_tokens = self.pretrained_tokenizer.tokenize(method, max_length=512, truncation=True)
-                    # 如果不够token，用unk补足
+                    # 如果不够token，用pad补足
                     if len(code_tokens) < self.max_length_token:
-                        extend_tokens = [self.pretrained_tokenizer.unk_token for _ in
+                        extend_tokens = [self.pretrained_tokenizer.pad_token for _ in
                                          range(self.max_length_token - len(code_tokens))]
                         code_tokens.extend(extend_tokens)
                     code_tokens = code_tokens[:self.max_length_token]
