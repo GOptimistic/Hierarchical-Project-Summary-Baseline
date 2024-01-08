@@ -79,8 +79,6 @@ class GruDecoder(nn.Module):
         """
         # embeded: [batch_size,1 , embedding_dim]
         embeded = self.embedding(decoder_input)
-        if torch.cuda.is_available():
-            embeded = embeded.cuda()
 
         # out [batch_size, 1, hidden_size] decoder_hidden [1, batch_size, hidden_size]
         out, decoder_hidden = self.gru(embeded.float(), decoder_hidden)

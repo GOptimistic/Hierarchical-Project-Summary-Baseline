@@ -103,7 +103,10 @@ def train(opt):
         model = Project2Seq_three_level(opt)
     else:
         model = Project2Seq(opt, pretrained_model, bos_token_id)
-
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
@@ -112,12 +115,11 @@ def train(opt):
     os.makedirs(opt.log_path)
     writer = SummaryWriter(opt.log_path)
     writer.add_graph(model,
-                     (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token).long(),
-                     torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long(),
-                     torch.zeros(opt.batch_size, opt.max_length_summary).long()))
+                     (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token).long().to(device),
+                     torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long().to(device),
+                     torch.zeros(opt.batch_size, opt.max_length_summary).long().to(device)))
 
-    if torch.cuda.is_available():
-        model = model.cuda()
+    model = model.to(device)
 
     criterion = nn.NLLLoss(ignore_index=pad_token_id)
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, momentum=opt.momentum)
