@@ -42,6 +42,8 @@ class TokenAttNet(nn.Module):
         # input:[token_size, batch_size] hidden_state:[2, batch_size, token_hidden_size] valid_len:[batch_size]
         # use nn.embedding.from_pretrained 替换 embedding
         output = self.embedding(input)  # [token_size, batch_size, embeddding_size]
+        if torch.cuda.is_available():
+            output = output.cuda()
         # f_output [token_size, batch_size, 2*token_hidden_size] h_output [2, batch_size, token_hidden_size]
         f_output, h_output = self.gru(output.float(), hidden_state)  # feature output and hidden state output
         output = matrix_mul(f_output, self.token_weight,
