@@ -21,7 +21,7 @@ from tqdm import tqdm
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_epoches", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--momentum", type=float, default=0.9)
@@ -115,10 +115,10 @@ def train(opt):
         shutil.rmtree(opt.log_path)
     os.makedirs(opt.log_path)
     writer = SummaryWriter(opt.log_path)
-    writer.add_graph(model,
-                     (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token).long().to(device),
-                     torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long().to(device),
-                     torch.zeros(opt.batch_size, opt.max_length_summary).long().to(device)))
+    # writer.add_graph(model,
+    #                  (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token).long().to(device),
+    #                  torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long().to(device),
+    #                  torch.zeros(opt.batch_size, opt.max_length_summary).long().to(device)))
 
 
     criterion = nn.NLLLoss(ignore_index=pad_token_id)
