@@ -26,23 +26,21 @@ def get_evaluation(y_true, y_prob, list_metrics):
 def matrix_mul(input, weight, bias=False):
     feature_list = []
     for feature in input:
+        # feature(a,b) weight(b,c) torch.mm-> result(a,c)
         feature = torch.mm(feature, weight)
         if isinstance(bias, torch.nn.parameter.Parameter):
             feature = feature + bias.expand(feature.size()[0], bias.size()[1])
         feature = torch.tanh(feature).unsqueeze(0)
         feature_list.append(feature)
-
     return torch.cat(feature_list, 0).squeeze()
 
 def element_wise_mul(input1, input2):
-
     feature_list = []
     for feature_1, feature_2 in zip(input1, input2):
         feature_2 = feature_2.unsqueeze(1).expand_as(feature_1)
         feature = feature_1 * feature_2
         feature_list.append(feature.unsqueeze(0))
     output = torch.cat(feature_list, 0)
-
     return torch.sum(output, 0).unsqueeze(0)
 
 def get_max_lengths(data_path):
@@ -66,6 +64,28 @@ def get_max_lengths(data_path):
         sorted_sent_length = sorted(sent_length_list)
 
     return sorted_word_length[int(0.8*len(sorted_word_length))], sorted_sent_length[int(0.8*len(sorted_sent_length))]
+
+def masked_softmax(vector, valid_len):
+    """
+    对两维向量进行带有有效长度掩码的 softmax 操作。
+
+    Parameters:
+    - vector: 二维向量，形状为 (batch_size, length)。
+    - valid_len: 一维向量，表示每个样本的有效长度，形状为 (batch_size,)。
+
+    Returns:
+    - result: softmax 结果。
+    """
+    # 构造 mask，将无效部分的值设为负无穷，以便在 softmax 中变为 0
+    mask = torch.arange(vector.size(1), device=vector.device)[None, :] < valid_len[:, None]
+
+    # 对 mask 应用 softmax，dim=1 表示在 length 维度上进行 softmax
+    result = torch.nn.functional.softmax(vector.masked_fill(~mask, float('-inf')), dim=1)
+
+    # 将有效长度为 0 的样本在 softmax 结果中的概率全部置为 0
+    result[valid_len == 0, :] = 0.0
+
+    return result
 
 if __name__ == "__main__":
     word, sent = get_max_lengths("../data/test.csv")

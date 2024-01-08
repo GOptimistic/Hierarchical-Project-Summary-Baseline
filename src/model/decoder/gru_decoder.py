@@ -7,17 +7,20 @@ from transformers import AutoModel, AutoTokenizer
 
 
 class GruDecoder(nn.Module):
-    def __init__(self, max_seq_len, hidden_size, batch_size, pretrained_model):
+    def __init__(self, max_seq_len, hidden_size, batch_size, bos_token_id, pretrained_model=None):
         super(GruDecoder, self).__init__()
         self.max_seq_len = max_seq_len
         self.hidden_size = hidden_size
         self.batch_size = batch_size
 
         # 预训练好的词嵌入模型
-        self.embedding = AutoModel.from_pretrained(pretrained_model)
-        configuration = self.embedding.config
-        self.pretrained_tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
-        self.bos_token_id = self.pretrained_tokenizer.convert_tokens_to_ids(self.pretrained_tokenizer.bos_token)
+        self.pretrained_model = pretrained_model
+        if self.pretrained_model is None:
+            self.pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
+        pretrained_embedding = self.pretrained_model.embeddings.word_embeddings.weight.data
+        self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
+        configuration = self.pretrained_model.config
+        self.bos_token_id = bos_token_id
 
         self.vocab_size = configuration.vocab_size
         self.embedding_dim = configuration.hidden_size
@@ -31,8 +34,8 @@ class GruDecoder(nn.Module):
         self.log_softmax = nn.LogSoftmax()
 
         self.fc = nn.Linear(self.hidden_size, self.vocab_size)
-        if torch.cuda.is_available():
-            self.embedding = self.embedding.cuda()
+        # if torch.cuda.is_available():
+        #     self.embedding = self.embedding.cuda()
 
     def forward(self, encoder_hidden, target):
         # encoder_hidden [1,batch_size,hidden_size]
@@ -48,7 +51,7 @@ class GruDecoder(nn.Module):
             decoder_input = decoder_input.cuda()
             decoder_outputs = decoder_outputs.cuda()
 
-        decoder_hidden = encoder_hidden  # [batch_size,hidden_size]
+        decoder_hidden = encoder_hidden  # [1, batch_size, hidden_size]
 
         for t in range(self.max_seq_len):
             decoder_output_t, decoder_hidden = self.forward_step(decoder_input, decoder_hidden)
@@ -74,19 +77,25 @@ class GruDecoder(nn.Module):
         :param decoder_hidden: [1,batch_size,hidden_size]
         :return: out:[batch_size,vocab_size],decoder_hidden:[1,batch_size,hidden_size]
         """
-        embeded = self.embedding(decoder_input)[0]  # embeded: [batch_size,1 , embedding_dim]
+        # embeded: [batch_size,1 , embedding_dim]
+        embeded = self.embedding(decoder_input)
 
-        out, decoder_hidden = self.gru(embeded.float(), decoder_hidden)  # out [1, batch_size, hidden_size]
+        # out [batch_size, 1, hidden_size] decoder_hidden [1, batch_size, hidden_size]
+        out, decoder_hidden = self.gru(embeded.float(), decoder_hidden)
 
-        out = out.squeeze(0)  # 去除第0维度的1
-        # 进行全连接形状变化，同时进行求取log_softmax
-        out = F.log_softmax(self.fc(out), dim=-1)  # out [batch_Size,1, vocab_size]
-        out = out.squeeze(1)
+        # out [batch_size, vocab_size]
+        out = self.fc(out.squeeze(1))  # 去除第1维度的1,并进行全连接形状变化
+
+        # 求取log_softmax，方便计算NLLLoss
+        # out [batch_Size, vocab_size]
+        out = F.log_softmax(out, dim=-1)
+        # out [batch_Size, vocab_size] decoder_hidden [1, batch_size, hidden_size]
         return out, decoder_hidden
 
     def evaluation(self, encoder_hidden):
         # batch_size = encoder_hidden.size(0)  # 评估的时候和训练的batch_size不同，不适用config的配置
-
+        if encoder_hidden.shape[1] != self.batch_size:
+            self.batch_size = encoder_hidden.shape[1]
         decoder_input = torch.LongTensor([[self.bos_token_id]] * self.batch_size)
         decoder_outputs = torch.zeros(self.batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
         if torch.cuda.is_available():
@@ -112,4 +121,12 @@ class GruDecoder(nn.Module):
 
         #   [batch_size, max_seq_len, vocal_size]
         return decoder_outputs
-
+if __name__ == '__main__':
+    pretrained_tokenizer = AutoTokenizer.from_pretrained('../../pretrained/codebert-base')
+    bos_token_id = pretrained_tokenizer.convert_tokens_to_ids(pretrained_tokenizer.bos_token)
+    print(bos_token_id)
+    pad_token_id = pretrained_tokenizer.convert_tokens_to_ids(pretrained_tokenizer.pad_token)
+    print(pad_token_id)
+    batch_size = 8
+    decoder_input = torch.LongTensor([[bos_token_id]] * batch_size)
+    print(decoder_input.shape)

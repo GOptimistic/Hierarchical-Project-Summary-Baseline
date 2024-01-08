@@ -45,32 +45,53 @@ class HierAttNet(nn.Module):
             self.file_hidden_state = self.file_hidden_state.cuda()
             self.package_hidden_state = self.package_hidden_state.cuda()
 
-    def forward(self, input):
-        # 我的输入应该是5维向量,(batch_size, package_size, file_size, method_size, token_size),两层循环得到三维向量
+    def forward(self, input, valid_len):
+        # input (batch_size, package_size, file_size, method_size, token_size),两层循环得到三维向量
+        # valid_len (batch_size, package_size, file_size, method_size)
         package_input = input.permute(1, 2, 3, 0, 4)
+        package_valid_len = valid_len.permute(1, 2, 3, 0)  # (package_size, file_size, method_size, batch_size)
         package_embedding_list = []
-        for file_input in package_input:
+        for file_input, file_valid_len in zip(package_input, package_valid_len):
+            # file_input (file_size, method_size, batch_size, token_size)
+            # file_valid_len (file_size, method_size, batch_size)
             file_embedding_list = []
-            for method_input in file_input:
+            for method_input, method_valid_len in zip(file_input, file_valid_len):
+                # method_input (method_size, batch_size, token_size)
+                # method_valid_len (method_size, batch_size)
                 method_embedding_list = []
-                for token_input in method_input:
+                for token_input, token_valid_len in zip(method_input, method_valid_len):
                     # print("###### enter token att")
-                    method_embedding, self.token_hidden_state = self.token_att_net(token_input.permute(1, 0), self.token_hidden_state)
+                    # token_input[batch_size, token_size]
+                    # token_valid_len[batch_size]
+                    method_embedding, self.token_hidden_state = self.token_att_net(token_input.permute(1, 0), self.token_hidden_state, token_valid_len)
                     method_embedding_list.append(method_embedding)
                 # 将method_embedding拼接送入method层输入
+                # (method_size, batch_size, 2*token_hidden_size)
+                method_valid_len = method_valid_len.permute(1, 0)
+                # 获取有效的method 长度，末尾可能有些method是padding，会是全0的元素
+                method_valid_len = torch.sum(method_valid_len != 0, dim=1)
                 method_embedding_list = torch.cat(method_embedding_list, 0)
                 # print("###### enter method att")
-                file_embedding, self.method_hidden_state = self.method_att_net(method_embedding_list, self.method_hidden_state)
+                file_embedding, self.method_hidden_state = self.method_att_net(method_embedding_list, self.method_hidden_state, method_valid_len)
                 file_embedding_list.append(file_embedding)
             # 将file_embedding拼接送入file层输入
             file_embedding_list = torch.cat(file_embedding_list, 0)
+            # 获取有效的file 长度，末尾可能有些file是padding，会是全0的元素
+            file_valid_len = file_valid_len.permute(2, 0, 1)
+            file_valid_len = torch.sum(file_valid_len != 0, dim=2)
+            file_valid_len = torch.sum(file_valid_len != 0, dim=1)
             # print("###### enter file att")
-            package_embedding, self.file_hidden_state = self.file_att_net(file_embedding_list, self.file_hidden_state)
+            package_embedding, self.file_hidden_state = self.file_att_net(file_embedding_list, self.file_hidden_state, file_valid_len)
             package_embedding_list.append(package_embedding)
         # 将package_embedding拼接送入package输入
         package_embedding_list = torch.cat(package_embedding_list, 0)
+        # 获取有效的package 长度，末尾可能有些package是padding，会是全0的元素
+        package_valid_len = package_valid_len.permute(3, 0, 1, 2)
+        package_valid_len = torch.sum(package_valid_len != 0, dim=3)
+        package_valid_len = torch.sum(package_valid_len != 0, dim=2)
+        package_valid_len = torch.sum(package_valid_len != 0, dim=1)
         # print("###### enter package att")
-        repo_output, self.package_hidden_state = self.package_att_net(package_embedding_list, self.package_hidden_state)
+        repo_output, self.package_hidden_state = self.package_att_net(package_embedding_list, self.package_hidden_state, package_valid_len)
 
         # 返回的是一个三维向量[1, batch_size, 2*package_hidden_size]
         return repo_output

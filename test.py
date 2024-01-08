@@ -1,16 +1,18 @@
 """
 @author: Guan Zheng <wwwguanzheng@163.com>
 """
+import argparse
+import csv
 import os
+import shutil
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from src.utils import get_evaluation
+
 from dataset import MyDataset
-import argparse
-import shutil
-import csv
-import numpy as np
+from src.utils import get_evaluation
 
 
 def get_args():

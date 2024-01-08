@@ -5,6 +5,9 @@ src/data
 src/pretrained
 logs/
 trained_models/
+logs_three/
+trained_models_three_level/
+*.log
 __pycache__/
 *.py[cod]
 *$py.class
