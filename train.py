@@ -107,6 +107,7 @@ def train(opt):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+    model = model.to(device)
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
@@ -119,7 +120,6 @@ def train(opt):
                      torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long().to(device),
                      torch.zeros(opt.batch_size, opt.max_length_summary).long().to(device)))
 
-    model = model.to(device)
 
     criterion = nn.NLLLoss(ignore_index=pad_token_id)
     optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, momentum=opt.momentum)
