@@ -112,9 +112,9 @@ def train(opt):
     os.makedirs(opt.log_path)
     writer = SummaryWriter(opt.log_path)
     writer.add_graph(model,
-                     (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token),
-                     torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method),
-                     torch.zeros(opt.batch_size, opt.max_length_summary)))
+                     (torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token).long(),
+                     torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long(),
+                     torch.zeros(opt.batch_size, opt.max_length_summary).long()))
 
     if torch.cuda.is_available():
         model = model.cuda()
