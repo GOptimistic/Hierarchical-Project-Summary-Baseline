@@ -21,7 +21,7 @@ from tqdm import tqdm
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_epoches", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--momentum", type=float, default=0.9)
