@@ -133,6 +133,7 @@ def train(opt):
 
     best_loss = 1e9
     best_epoch = 0
+    torch.autograd.set_detect_anomaly(True)
     model.train()
     num_iter_per_epoch = len(training_generator)
     for epoch in range(opt.num_epoches):
@@ -231,6 +232,7 @@ def train(opt):
             #     break
 
     writer.close()
+    torch.autograd.set_detect_anomaly(True)
     print("###### Train done. Best loss {}. Best epoch {}".format(best_loss, best_epoch))
 
 
