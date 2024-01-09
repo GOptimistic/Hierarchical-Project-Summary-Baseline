@@ -94,9 +94,9 @@ def train(opt):
                     "shuffle": False,
                     "drop_last": False}
 
-    training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length)
+    training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length, opt.max_length_token)
     training_generator = DataLoader(training_set, **training_params)
-    valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length)
+    valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
     valid_generator = DataLoader(valid_set, **valid_params)
 
     if opt.model_level == 3:
