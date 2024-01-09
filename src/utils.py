@@ -25,7 +25,7 @@ def get_evaluation(y_true, y_prob, list_metrics):
 
 def matrix_mul(input, weight, bias=False):
     feature_list = []
-    for feature in input.unbind():
+    for feature in input:
         # feature(a,b) weight(b,c) torch.mm-> result(a,c)
         feature = torch.mm(feature, weight)
         if isinstance(bias, torch.nn.parameter.Parameter):
@@ -36,7 +36,7 @@ def matrix_mul(input, weight, bias=False):
 
 def element_wise_mul(input1, input2):
     feature_list = []
-    for feature_1, feature_2 in zip(input1.unbind(), input2.unbind()):
+    for feature_1, feature_2 in zip(input1, input2):
         feature_2 = feature_2.unsqueeze(1).expand_as(feature_1)
         feature = feature_1 * feature_2
         feature_list.append(feature.unsqueeze(0))

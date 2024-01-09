@@ -51,24 +51,15 @@ class HierAttNet(nn.Module):
         package_input = input.permute(1, 2, 3, 0, 4)
         package_valid_len = valid_len.permute(1, 2, 3, 0)  # (package_size, file_size, method_size, batch_size)
         package_embedding_list = []
-        package_length = package_input.shape[0]
-        for package_index in range(package_length):
-            file_input = package_input[package_index]
-            file_valid_len = package_valid_len[package_index]
+        for file_input, file_valid_len in zip(package_input, package_valid_len):
             # file_input (file_size, method_size, batch_size, token_size)
             # file_valid_len (file_size, method_size, batch_size)
             file_embedding_list = []
-            file_length = file_input.shape[0]
-            for file_index in range(file_length):
-                method_input = file_input[file_index]
-                method_valid_len = file_valid_len[file_index]
+            for method_input, method_valid_len in zip(file_input, file_valid_len):
                 # method_input (method_size, batch_size, token_size)
                 # method_valid_len (method_size, batch_size)
                 method_embedding_list = []
-                method_length = method_input.shape[0]
-                for method_index in range(method_length):
-                    token_input = method_input[method_index]
-                    token_valid_len = method_valid_len[method_index]
+                for token_input, token_valid_len in zip(method_input, method_valid_len):
                     # print("###### enter token att")
                     # token_input[batch_size, token_size]
                     # token_valid_len[batch_size]
