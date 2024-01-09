@@ -81,7 +81,7 @@ class GruDecoder(nn.Module):
         embeded = self.embedding(decoder_input)
 
         # out [batch_size, 1, hidden_size] decoder_hidden [1, batch_size, hidden_size]
-        out, decoder_hidden = self.gru(embeded.float(), decoder_hidden)
+        out, decoder_hidden = self.gru(embeded, decoder_hidden)
 
         # out [batch_size, vocab_size]
         out = self.fc(out.squeeze(1))  # 去除第1维度的1,并进行全连接形状变化

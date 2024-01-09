@@ -148,6 +148,8 @@ def train(opt):
                 repo_valid_len = repo_valid_len.cuda()
                 summary = summary.cuda()
                 summary_valid_len = summary_valid_len.cuda()
+            print(repo_info.shape)
+            print(repo_valid_len.shape)
             optimizer.zero_grad()
             predictions = model(repo_info, repo_valid_len, summary)[0]
             # 将向量变成[batch_size*max_length_summary, vocab_size]方便计算损失值，可参考torch官方api文档

@@ -18,13 +18,14 @@ csv.field_size_limit(sys.maxsize)
 
 class MyDataset(Dataset):
 
-    def __init__(self, data_dir_path, data_path_prefix, part_size, total_length):
+    def __init__(self, data_dir_path, data_path_prefix, part_size, total_length, max_token_length):
         super(MyDataset, self).__init__()
 
         self.data_dir_path = data_dir_path
         self.data_path_prefix = data_path_prefix
         self.part_size = part_size
         self.total_length = total_length
+        self.max_token_length = max_token_length
 
     def __len__(self):
         return self.total_length
@@ -39,7 +40,9 @@ class MyDataset(Dataset):
             repo_valid_len = f.get("repo_valid_len")[part_index:part_index + 1]
             summary = f.get("summary")[part_index:part_index + 1]
             summary_valid_len = f.get("summary_valid_len")[part_index:part_index + 1]
-
+        if repo_info.shape[4] > self.max_token_length:
+            repo_info = repo_info[..., 0:self.max_token_length]
+            repo_valid_len = np.where(repo_valid_len < self.max_token_length, repo_valid_len, self.max_token_length)
         return np.squeeze(repo_info, 0), np.squeeze(repo_valid_len, 0), np.squeeze(summary, 0), np.squeeze(summary_valid_len, 0)
 
 

@@ -43,7 +43,7 @@ class TokenAttNet(nn.Module):
         # use nn.embedding.from_pretrained 替换 embedding
         output = self.embedding(input)  # [token_size, batch_size, embeddding_size]
         # f_output [token_size, batch_size, 2*token_hidden_size] h_output [2, batch_size, token_hidden_size]
-        f_output, h_output = self.gru(output.float(), hidden_state)  # feature output and hidden state output
+        f_output, h_output = self.gru(output, hidden_state)  # feature output and hidden state output
         output = matrix_mul(f_output, self.token_weight,
                             self.token_bias)  # [token_size, batch_size, 2*token_hidden_size]
         output = matrix_mul(output, self.context_weight).permute(1, 0)  # [batch_size, token_size]
