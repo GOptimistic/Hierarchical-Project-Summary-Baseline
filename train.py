@@ -21,14 +21,14 @@ from tqdm import tqdm
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_epoches", type=int, default=20)
-    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--token_hidden_size", type=int, default=64)
-    parser.add_argument("--method_hidden_size", type=int, default=64)
-    parser.add_argument("--file_hidden_size", type=int, default=64)
-    parser.add_argument("--package_hidden_size", type=int, default=64)
+    parser.add_argument("--token_hidden_size", type=int, default=32)
+    parser.add_argument("--method_hidden_size", type=int, default=32)
+    parser.add_argument("--file_hidden_size", type=int, default=32)
+    parser.add_argument("--package_hidden_size", type=int, default=32)
     parser.add_argument("--es_min_delta", type=float, default=0.0,
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
@@ -133,7 +133,7 @@ def train(opt):
 
     best_loss = 1e9
     best_epoch = 0
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     model.train()
     num_iter_per_epoch = len(training_generator)
     for epoch in range(opt.num_epoches):
@@ -170,7 +170,7 @@ def train(opt):
                 loss, training_metrics["accuracy"]))
             writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
             writer.add_scalar('Train/Accuracy', training_metrics["accuracy"], epoch * num_iter_per_epoch + iter_index)
-        if epoch % opt.test_interval == 0:
+        if epoch % opt.valid_interval == 0:
             model.eval()
             target_bleu_file = open(bleu_path + os.sep + "target_bleu_{}.txt".format(epoch + 1), "w")
             pred_bleu_file = open(bleu_path + os.sep + "pred_bleu_{}.txt".format(epoch + 1), "w")
@@ -232,7 +232,7 @@ def train(opt):
             #     break
 
     writer.close()
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(False)
     print("###### Train done. Best loss {}. Best epoch {}".format(best_loss, best_epoch))
 
 

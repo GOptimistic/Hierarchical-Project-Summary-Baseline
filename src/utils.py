@@ -77,13 +77,13 @@ def masked_softmax(vector, valid_len):
     - result: softmax 结果。
     """
     # 构造 mask，将无效部分的值设为负无穷，以便在 softmax 中变为 0
-    mask = torch.arange(vector.size(1), device=vector.device)[None, :] < valid_len[:, None]
+    mask = torch.arange(vector.size(1), device=vector.device)[None, :].clone() < valid_len[:, None]
 
     # 对 mask 应用 softmax，dim=1 表示在 length 维度上进行 softmax
     result = torch.nn.functional.softmax(vector.masked_fill(~mask, float('-inf')), dim=1)
 
     # 将有效长度为 0 的样本在 softmax 结果中的概率全部置为 0
-    result[valid_len == 0, :] = 0.0
+    result = result.masked_fill(valid_len[:, None] == 0, 0.0)
 
     return result
 
