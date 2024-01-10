@@ -40,7 +40,8 @@ class GruDecoder(nn.Module):
     def forward(self, encoder_hidden, target):
         # encoder_hidden [1,batch_size,hidden_size]
         # target [batch_size,max_len]
-
+        if encoder_hidden.shape[1] != self.batch_size:
+            self.batch_size = encoder_hidden.shape[1]
         # 初始的全为<s>的输入
         decoder_input = torch.LongTensor([[self.bos_token_id]] * self.batch_size)
 
@@ -93,11 +94,10 @@ class GruDecoder(nn.Module):
         return out, decoder_hidden
 
     def evaluation(self, encoder_hidden):
-        # batch_size = encoder_hidden.size(0)  # 评估的时候和训练的batch_size不同，不适用config的配置
-        if encoder_hidden.shape[1] != self.batch_size:
-            self.batch_size = encoder_hidden.shape[1]
-        decoder_input = torch.LongTensor([[self.bos_token_id]] * self.batch_size)
-        decoder_outputs = torch.zeros(self.batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
+        # 评估的时候和训练的batch_size不同，不适用config的配置
+        evaluation_batch_size = encoder_hidden.shape[1]
+        decoder_input = torch.LongTensor([[self.bos_token_id]] * evaluation_batch_size)
+        decoder_outputs = torch.zeros(evaluation_batch_size, self.max_seq_len, self.vocab_size)  # [batch_size，seq_len,vocab_size]
         if torch.cuda.is_available():
             decoder_input = decoder_input.cuda()
             decoder_outputs = decoder_outputs.cuda()
