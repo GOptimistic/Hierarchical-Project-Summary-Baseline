@@ -199,10 +199,13 @@ def train(opt):
             te_pred_text = tokenizer.batch_decode(np.argmax(te_pred, -1))
             te_target_text = tokenizer.batch_decode(te_target)
 
+            print(f"Valid data length: {len(te_target)}")
             # 写入文本文件
             for i in range(len(te_target_text)):
                 target_bleu_file.write(te_target_text[i] + "\n")
                 pred_bleu_file.write(te_pred_text[i] + "\n")
+            target_bleu_file.close()
+            pred_bleu_file.close()
             valid_metrics = get_evaluation(te_target.reshape(-1),
                                           te_pred.reshape(len(te_pred) * opt.max_length_summary, -1),
                                           list_metrics=["accuracy"])
@@ -214,10 +217,6 @@ def train(opt):
                 te_loss, valid_metrics["accuracy"]))
             writer.add_scalar('Valid/Loss', te_loss, epoch)
             writer.add_scalar('Valid/Accuracy', valid_metrics["accuracy"], epoch)
-            # 保存模型
-            checkpoint = {"model_state_dict": model.state_dict(),
-                          "optimizer_state_dict": optimizer.state_dict(),
-                          "epoch": epoch + 1}
             path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
             torch.save(checkpoint, path_checkpoint)
             # torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
@@ -225,6 +224,12 @@ def train(opt):
             if te_loss + opt.es_min_delta < best_loss:
                 best_loss = te_loss
                 best_epoch = epoch
+            # 保存模型
+            checkpoint = {"model_state_dict": model.state_dict(),
+                          "optimizer_state_dict": optimizer.state_dict(),
+                          "epoch": epoch + 1,
+                          "best_loss": best_loss,
+                          "best_epoch": best_epoch}
             #
             # # Early stopping
             # if epoch - best_epoch > opt.es_patience > 0:
