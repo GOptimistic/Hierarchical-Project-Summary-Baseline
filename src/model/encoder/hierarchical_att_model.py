@@ -14,7 +14,7 @@ from src.model.encoder.package_att_model import PackageAttNet
 
 class HierAttNet(nn.Module):
     def __init__(self, token_hidden_size, method_hidden_size, file_hidden_size, package_hidden_size,
-                 batch_size, pretrained_model):
+                 batch_size, local_rank, pretrained_model):
         super(HierAttNet, self).__init__()
         self.batch_size = batch_size
         self.token_hidden_size = token_hidden_size
@@ -27,7 +27,10 @@ class HierAttNet(nn.Module):
         self.method_att_net = MethodAttNet(method_hidden_size=self.method_hidden_size, token_hidden_size=self.token_hidden_size)
         self.file_att_net = FileAttNet(file_hidden_size=self.file_hidden_size, method_hidden_size=self.method_hidden_size)
         self.package_att_net = PackageAttNet(package_hidden_size=self.package_hidden_size, file_hidden_size=self.file_hidden_size)
-
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda", local_rank)
+        else:
+            self.device = torch.device("cpu")
         self._init_hidden_state()
 
     def _init_hidden_state(self, last_batch_size=None):
@@ -35,15 +38,10 @@ class HierAttNet(nn.Module):
             batch_size = last_batch_size
         else:
             batch_size = self.batch_size
-        self.token_hidden_state = torch.zeros(2, batch_size, self.token_hidden_size)
-        self.method_hidden_state = torch.zeros(2, batch_size, self.method_hidden_size)
-        self.file_hidden_state = torch.zeros(2, batch_size, self.file_hidden_size)
-        self.package_hidden_state = torch.zeros(2, batch_size, self.package_hidden_size)
-        if torch.cuda.is_available():
-            self.token_hidden_state = self.token_hidden_state.cuda()
-            self.method_hidden_state = self.method_hidden_state.cuda()
-            self.file_hidden_state = self.file_hidden_state.cuda()
-            self.package_hidden_state = self.package_hidden_state.cuda()
+        self.token_hidden_state = torch.zeros(2, batch_size, self.token_hidden_size).to(self.device)
+        self.method_hidden_state = torch.zeros(2, batch_size, self.method_hidden_size).to(self.device)
+        self.file_hidden_state = torch.zeros(2, batch_size, self.file_hidden_size).to(self.device)
+        self.package_hidden_state = torch.zeros(2, batch_size, self.package_hidden_size).to(self.device)
 
     def forward(self, input, valid_len):
         # input (batch_size, package_size, file_size, method_size, token_size),两层循环得到三维向量

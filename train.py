@@ -4,7 +4,7 @@
 import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, DistributedSampler
 from transformers import AutoTokenizer, AutoModel
 
 from src.model.Project2Seq import Project2Seq
@@ -53,6 +53,7 @@ def get_args():
     parser.add_argument("--train_total_length", type=int, default="24357")
     parser.add_argument("--valid_part_size", type=int, default="400")
     parser.add_argument("--valid_total_length", type=int, default="3045")
+    parser.add_argument("--local_rank", default=os.getenv('LOCAL_RANK', -1), type=int)
     args = parser.parse_args()
     return args
 
@@ -68,6 +69,10 @@ def train(opt):
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
+    if opt.local_rank != -1:
+        torch.cuda.set_device(opt.local_rank)
+        device = torch.device("cuda", opt.local_rank)
+        torch.distributed.init_process_group(backend="nccl", init_method='env://')
     lang = opt.lang
     # opt.repo_base_path = opt.repo_base_path + os.sep + lang
     opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
@@ -95,7 +100,8 @@ def train(opt):
                     "drop_last": False}
 
     training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length, opt.max_length_token)
-    training_generator = DataLoader(training_set, **training_params)
+    train_sampler = DistributedSampler(training_set)
+    training_generator = DataLoader(training_set, sampler=train_sampler, pin_memory=True, **training_params)
     valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
     valid_generator = DataLoader(valid_set, **valid_params)
 
@@ -103,11 +109,12 @@ def train(opt):
         model = Project2Seq_three_level(opt)
     else:
         model = Project2Seq(opt, pretrained_model, bos_token_id)
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-    model = model.to(device)
+    model.to(device)
+    num_gpus = torch.cuda.device_count()
+    if num_gpus > 1:
+        print('Use {} gpus!'.format(num_gpus))
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[opt.local_rank],
+                                                    output_device=opt.local_rank)
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
@@ -134,9 +141,10 @@ def train(opt):
     best_loss = 1e9
     best_epoch = 0
     # torch.autograd.set_detect_anomaly(True)
-    model.train()
+    model.module.train()
     num_iter_per_epoch = len(training_generator)
     for epoch in range(opt.num_epoches):
+        train_sampler.set_epoch(epoch)  # shuffle
         if epoch + 1 <= epoch_finished:
             print("###### Epoch {} has archived".format(epoch + 1))
             continue
@@ -145,10 +153,10 @@ def train(opt):
         for repo_info, repo_valid_len, summary, summary_valid_len in tqdm(training_generator):
             iter_index = iter_index + 1
             if torch.cuda.is_available():
-                repo_info = repo_info.cuda()
-                repo_valid_len = repo_valid_len.cuda()
-                summary = summary.cuda()
-                summary_valid_len = summary_valid_len.cuda()
+                repo_info.to(device)
+                repo_valid_len.to(device)
+                summary.to(device)
+                summary_valid_len.to(device)
             print(repo_info.shape)
             print(repo_valid_len.shape)
             optimizer.zero_grad()
@@ -170,8 +178,8 @@ def train(opt):
                 loss, training_metrics["accuracy"]))
             writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
             writer.add_scalar('Train/Accuracy', training_metrics["accuracy"], epoch * num_iter_per_epoch + iter_index)
-        if epoch % opt.valid_interval == 0:
-            model.eval()
+        if epoch % opt.valid_interval == 0 and opt.local_rank == 0:
+            model.module.eval()
             target_bleu_file = open(bleu_path + os.sep + "target_bleu_{}.txt".format(epoch + 1), "w")
             pred_bleu_file = open(bleu_path + os.sep + "pred_bleu_{}.txt".format(epoch + 1), "w")
             loss_ls = []
@@ -180,10 +188,10 @@ def train(opt):
             print("Epoch {} start valid test".format(epoch + 1))
             for te_repo_info, te_repo_valid_len, te_summary, te_summary_valid_len in tqdm(valid_generator):
                 if torch.cuda.is_available():
-                    te_repo_info = te_repo_info.cuda()
-                    te_repo_valid_len = te_repo_valid_len.cuda()
-                    te_summary = te_summary.cuda()
-                    te_summary_valid_len = te_summary_valid_len.cuda()
+                    te_repo_info.to(device)
+                    te_repo_valid_len.to(device)
+                    te_summary.to(device)
+                    te_summary_valid_len.to(device)
                 with torch.no_grad():
                     te_predictions = model.evaluation(te_repo_info, te_repo_valid_len)
                 # 最后一个batch的size不一定是opt.batch_size,所以用第一维大小代替
@@ -221,7 +229,7 @@ def train(opt):
                 best_loss = te_loss
                 best_epoch = epoch
             # 保存模型
-            checkpoint = {"model_state_dict": model.state_dict(),
+            checkpoint = {"model_state_dict": model.module.state_dict(),
                           "optimizer_state_dict": optimizer.state_dict(),
                           "epoch": epoch + 1,
                           "best_loss": best_loss,

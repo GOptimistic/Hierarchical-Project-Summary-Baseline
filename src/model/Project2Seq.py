@@ -9,7 +9,7 @@ class Project2Seq(nn.Module):
     def __init__(self, opt, pretrained_model, bos_token_id):
         super(Project2Seq, self).__init__()
         self.encoder = HierAttNet(opt.token_hidden_size, opt.method_hidden_size, opt.file_hidden_size, opt.package_hidden_size,
-                 opt.batch_size, pretrained_model=pretrained_model)
+                                  opt.batch_size, opt.local_rank, pretrained_model=pretrained_model)
         self.decoder = GruDecoder(opt.max_length_summary, 2 * opt.package_hidden_size, opt.batch_size, bos_token_id, pretrained_model=pretrained_model)
 
     def forward(self, repo_info, repo_valid_len, target):
