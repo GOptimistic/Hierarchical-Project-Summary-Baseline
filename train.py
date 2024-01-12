@@ -217,10 +217,6 @@ def train(opt):
                 te_loss, valid_metrics["accuracy"]))
             writer.add_scalar('Valid/Loss', te_loss, epoch)
             writer.add_scalar('Valid/Accuracy', valid_metrics["accuracy"], epoch)
-            path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
-            torch.save(checkpoint, path_checkpoint)
-            # torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
-            model.train()
             if te_loss + opt.es_min_delta < best_loss:
                 best_loss = te_loss
                 best_epoch = epoch
@@ -230,6 +226,10 @@ def train(opt):
                           "epoch": epoch + 1,
                           "best_loss": best_loss,
                           "best_epoch": best_epoch}
+            path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
+            torch.save(checkpoint, path_checkpoint)
+            # torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
+            model.train()
             #
             # # Early stopping
             # if epoch - best_epoch > opt.es_patience > 0:
