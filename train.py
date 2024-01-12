@@ -25,10 +25,10 @@ def get_args():
     parser.add_argument("--num_epoches", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--token_hidden_size", type=int, default=32)
-    parser.add_argument("--method_hidden_size", type=int, default=32)
-    parser.add_argument("--file_hidden_size", type=int, default=32)
-    parser.add_argument("--package_hidden_size", type=int, default=32)
+    parser.add_argument("--token_hidden_size", type=int, default=64)
+    parser.add_argument("--method_hidden_size", type=int, default=64)
+    parser.add_argument("--file_hidden_size", type=int, default=64)
+    parser.add_argument("--package_hidden_size", type=int, default=64)
     parser.add_argument("--es_min_delta", type=float, default=0.0,
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
