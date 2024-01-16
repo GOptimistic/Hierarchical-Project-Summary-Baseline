@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 
 from src.model.Project2Seq import Project2Seq
 from src.model.Project2Seq_three_level import Project2Seq_three_level
+from src.model.Project2Seq_two_level import Project2Seq_Two_Level
 from src.utils import get_max_lengths, get_evaluation
 from dataset import MyDataset
 from tensorboardX import SummaryWriter
@@ -21,8 +22,8 @@ from tqdm import tqdm
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--num_epoches", type=int, default=20)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--num_epoches", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--token_hidden_size", type=int, default=64)
@@ -34,9 +35,9 @@ def get_args():
     parser.add_argument("--es_patience", type=int, default=10,
                         help="Early stopping's parameter: number of epochs with no improvement after which training will be stopped. Set to 0 to disable this technique.")
     parser.add_argument("--data_dir_path", type=str, default="../clone_github_repo_data/java/hdf5_no_compress_data/")
-    parser.add_argument("--train_data_path_prefix", type=str, default="train_")
-    parser.add_argument("--valid_data_path_prefix", type=str, default="valid_")
-    parser.add_argument("--valid_interval", type=int, default=1, help="Number of epoches between testing phases")
+    parser.add_argument("--train_data_path", type=str, default="./function_summary_data/spring-boot_train.json")
+    parser.add_argument("--valid_data_path", type=str, default="./function_summary_data/spring-boot_valid.json")
+    parser.add_argument("--valid_interval", type=int, default=10, help="Number of epoches between testing phases")
     parser.add_argument("--pretrained_model", type=str, default="./src/pretrained/codebert-base")
     parser.add_argument("--log_path", type=str, default="./logs")
     parser.add_argument("--saved_path", type=str, default="./trained_models")
@@ -44,11 +45,11 @@ def get_args():
     parser.add_argument("--max_length_package", type=int, default=30)
     parser.add_argument("--max_length_file", type=int, default=10)
     parser.add_argument("--max_length_method", type=int, default=20)
-    parser.add_argument("--max_length_token", type=int, default=350)
-    parser.add_argument("--max_length_summary", type=int, default=40)
+    parser.add_argument("--max_length_token", type=int, default=512)
+    parser.add_argument("--max_length_summary", type=int, default=48)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
-    parser.add_argument("--model_level", type=int, default="5")
+    parser.add_argument("--model_level", type=int, default="2")
     parser.add_argument("--train_part_size", type=int, default="3200")
     parser.add_argument("--train_total_length", type=int, default="24357")
     parser.add_argument("--valid_part_size", type=int, default="400")
@@ -94,12 +95,22 @@ def train(opt):
                     "shuffle": False,
                     "drop_last": False}
 
-    training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length, opt.max_length_token)
+    training_set = MyDataset(data_path=opt.train_data_path,
+                             max_length_token=opt.max_length_token,
+                             max_summary_length=opt.max_summary_length,
+                             pretrained_tokenizer=tokenizer,
+                             pad_id=pad_token_id)
     training_generator = DataLoader(training_set, **training_params)
-    valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
+    valid_set = MyDataset(data_path=opt.valid_data_path,
+                             max_length_token=opt.max_length_token,
+                             max_summary_length=opt.max_summary_length,
+                             pretrained_tokenizer=tokenizer,
+                             pad_id=pad_token_id)
     valid_generator = DataLoader(valid_set, **valid_params)
 
-    if opt.model_level == 3:
+    if opt.model_level == 2:
+        model = Project2Seq_Two_Level(opt)
+    elif opt.model_level == 3:
         model = Project2Seq_three_level(opt)
     else:
         model = Project2Seq(opt, pretrained_model, bos_token_id)
