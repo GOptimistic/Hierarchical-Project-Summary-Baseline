@@ -71,8 +71,8 @@ def train(opt):
         torch.manual_seed(123)
     lang = opt.lang
     # opt.repo_base_path = opt.repo_base_path + os.sep + lang
-    opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
-    opt.valid_data_path_prefix = opt.valid_data_path_prefix + lang + "_"
+    # opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
+    # opt.valid_data_path_prefix = opt.valid_data_path_prefix + lang + "_"
     opt.saved_path = opt.saved_path + os.sep + lang
     opt.log_path = opt.log_path + os.sep + lang
     if not os.path.exists(opt.log_path):
@@ -96,20 +96,20 @@ def train(opt):
                     "drop_last": False}
 
     training_set = MyDataset(data_path=opt.train_data_path,
-                             max_length_token=opt.max_length_token,
-                             max_summary_length=opt.max_summary_length,
+                             max_token_length=opt.max_length_token,
+                             max_summary_length=opt.max_length_summary,
                              pretrained_tokenizer=tokenizer,
                              pad_id=pad_token_id)
     training_generator = DataLoader(training_set, **training_params)
     valid_set = MyDataset(data_path=opt.valid_data_path,
-                             max_length_token=opt.max_length_token,
-                             max_summary_length=opt.max_summary_length,
+                             max_token_length=opt.max_length_token,
+                             max_summary_length=opt.max_length_summary,
                              pretrained_tokenizer=tokenizer,
                              pad_id=pad_token_id)
     valid_generator = DataLoader(valid_set, **valid_params)
 
     if opt.model_level == 2:
-        model = Project2Seq_Two_Level(opt)
+        model = Project2Seq_Two_Level(opt, pretrained_model, bos_token_id)
     elif opt.model_level == 3:
         model = Project2Seq_three_level(opt)
     else:
