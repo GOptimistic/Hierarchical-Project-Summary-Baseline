@@ -18,9 +18,8 @@ class HierAttNet_Two_Level(nn.Module):
         super(HierAttNet_Two_Level, self).__init__()
         self.batch_size = batch_size
         self.token_hidden_size = token_hidden_size
-        self.pretrained_model = pretrained_model
 
-        self.token_att_net = TokenAttNet(self.token_hidden_size, self.pretrained_model)
+        self.token_att_net = TokenAttNet(self.token_hidden_size, pretrained_model)
         self._init_hidden_state()
 
     def _init_hidden_state(self, last_batch_size=None):

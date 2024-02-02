@@ -13,13 +13,12 @@ class TokenAttNet(nn.Module):
         super(TokenAttNet, self).__init__()
 
         # 预训练好的词嵌入模型
-        self.pretrained_model = pretrained_model
-        if self.pretrained_model is None:
-            self.pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
-        pretrained_embedding = self.pretrained_model.embeddings.word_embeddings.weight.data
+        if pretrained_model is None:
+            pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
+        pretrained_embedding = pretrained_model.embeddings.word_embeddings.weight.data
         self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
 
-        configuration = self.pretrained_model.config
+        configuration = pretrained_model.config
         print(configuration.vocab_size)
         embedding_size = configuration.hidden_size
 
@@ -32,7 +31,7 @@ class TokenAttNet(nn.Module):
         self._create_weights(mean=0.0, std=0.05)
 
         # if torch.cuda.is_available():
-        #     self.pretrained_model = self.pretrained_model.cuda()
+        #     pretrained_model = pretrained_model.cuda()
 
     def _create_weights(self, mean=0.0, std=0.05):
         self.token_weight.data.normal_(mean, std)
