@@ -41,6 +41,7 @@ class MyDataset(Dataset):
         method = self.data_list[index]
         code_str = method["code"]
         summary_tokens = method["summary_tokens"]
+        code_str = code_str.strip()
         code_tokens = self.pretrained_tokenizer.tokenize(code_str, max_length=512, truncation=True)
         summary_tokens = ' '.join(summary_tokens)
         summary_tokens = self.pretrained_tokenizer.tokenize(summary_tokens, max_length=512, truncation=True)
@@ -72,10 +73,10 @@ if __name__ == '__main__':
     pretrained_tokenizer = AutoTokenizer.from_pretrained(
         "/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/pretrained/codebert-base")
     pad_id = pretrained_tokenizer.convert_tokens_to_ids(pretrained_tokenizer.pad_token)
-    test = MyDataset(data_path="/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/function_summary_data/spring-boot_train.json",
+    test = MyDataset(data_path="/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/function_summary_data/spring-boot_valid.json",
                      pretrained_tokenizer=pretrained_tokenizer,
                      pad_id=pad_id)
-    print(test.__getitem__(index=1)[0].shape)
+    # print(test.__getitem__(index=1)[0].shape)
 
     training_params = {"batch_size": 16,
                        "shuffle": True,

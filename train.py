@@ -17,6 +17,7 @@ import argparse
 import shutil
 import numpy as np
 from tqdm import tqdm
+from torchinfo import summary as infoSummary
 
 
 def get_args():
@@ -122,6 +123,7 @@ def train(opt):
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
+    infoSummary(model, [(opt.batch_size, opt.max_length_token), (opt.batch_size,), (opt.batch_size, opt.max_length_summary)])
     if os.path.isdir(opt.log_path):
         shutil.rmtree(opt.log_path)
     os.makedirs(opt.log_path)
