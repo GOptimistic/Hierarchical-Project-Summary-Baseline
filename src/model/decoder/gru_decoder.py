@@ -14,12 +14,11 @@ class GruDecoder(nn.Module):
         self.batch_size = batch_size
 
         # 预训练好的词嵌入模型
-        self.pretrained_model = pretrained_model
-        if self.pretrained_model is None:
-            self.pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
-        pretrained_embedding = self.pretrained_model.embeddings.word_embeddings.weight.data
+        if pretrained_model is None:
+            pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
+        pretrained_embedding = pretrained_model.embeddings.word_embeddings.weight.data
         self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
-        configuration = self.pretrained_model.config
+        configuration = pretrained_model.config
         self.bos_token_id = bos_token_id
 
         self.vocab_size = configuration.vocab_size
