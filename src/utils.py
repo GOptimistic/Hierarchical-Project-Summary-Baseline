@@ -8,6 +8,7 @@ csv.field_size_limit(sys.maxsize)
 from nltk.tokenize import sent_tokenize, word_tokenize
 from sklearn import metrics
 import numpy as np
+from nltk.translate.bleu_score import sentence_bleu
 
 def get_evaluation(y_true, y_prob, list_metrics):
     y_pred = np.argmax(y_prob, -1)
@@ -86,6 +87,39 @@ def masked_softmax(vector, valid_len):
     result = result.masked_fill(valid_len[:, None] == 0, 0.0)
 
     return result
+
+def schedule_sampling(step, summary_steps, c, k):
+    if c == 0:
+        # Inverse sigmoid decay: ϵi = k/(k+exp(i/k))
+        # k = np.argmin([np.abs(summary_steps / 2 - x * np.log(x)) for x in range(1, summary_steps)])
+        e = k / (k + np.exp(step / k))
+    elif c == 1:
+        # Linear decay: ϵi = -1/k * i + 1
+        e = -1 / summary_steps * step + 1
+    elif c == 2:
+        # Exponential decay: ϵi = k^i
+        e = np.power(0.999, step)
+    return e
+
+
+def computebleu(sentences, targets):
+    score = 0
+    assert (len(sentences) == len(targets))
+
+    def cut_token(sentence):
+        tmp = []
+        for token in sentence:
+            if token == '<unk>' or token.isdigit() or len(bytes(token[0], encoding='utf-8')) == 1:
+                tmp.append(token)
+            else:
+                tmp += [word for word in token]
+        return tmp
+
+    for sentence, target in zip(sentences, targets):
+        sentence = cut_token(sentence)
+        target = cut_token(target)
+        score += sentence_bleu([target], sentence, weights=(0.25, 0.25, 0.25, 0.25))
+    return score
 
 if __name__ == "__main__":
     word, sent = get_max_lengths("../data/test.csv")

@@ -13,33 +13,19 @@ from src.model.encoder.package_att_model import PackageAttNet
 
 
 class HierAttNet_Two_Level(nn.Module):
-    def __init__(self, token_hidden_size,
-                 batch_size, pretrained_model):
+    def __init__(self, token_hidden_size, pretrained_model, n_layers, dropout):
         super(HierAttNet_Two_Level, self).__init__()
-        self.batch_size = batch_size
-        self.token_hidden_size = token_hidden_size
-
-        self.token_att_net = TokenAttNet(self.token_hidden_size, pretrained_model)
-        self._init_hidden_state()
-
-    def _init_hidden_state(self, last_batch_size=None):
-        if last_batch_size:
-            batch_size = last_batch_size
-        else:
-            batch_size = self.batch_size
-        self.token_hidden_state = torch.zeros(2, batch_size, self.token_hidden_size)
-        if torch.cuda.is_available():
-            self.token_hidden_state = self.token_hidden_state.cuda()
+        self.token_att_net = TokenAttNet(token_hidden_size, pretrained_model, n_layers, dropout)
 
     def forward(self, input, valid_len):
         # input (batch_size, token_size),两层循环得到三维向量
         # valid_len (batch_size)
 
-        method_embedding, self.token_hidden_state = self.token_att_net(input.permute(1, 0),
-                                                                       self.token_hidden_state, valid_len)
+        outputs, s = self.token_att_net(input)
 
-        # 返回的是一个三维向量[1, batch_size, 2*token_size]
-        return method_embedding
+        # outputs [batch_size, token_size, 2*hidden_size]
+        # s = [num_layers, batch size, hidden_size * 2]
+        return outputs, s
 
 
 if __name__ == '__main__':
