@@ -44,6 +44,8 @@ class GruDecoder(nn.Module):
         # c = [batch_size, 1, hid_dim * 2]
         c = torch.bmm(a, enc_outputs)
         # rnn_input = [batch_size, 1, embedding_dim + hidden_size * 2]
+        # print(embedded.shape)
+        # print(c.shape)
         rnn_input = torch.cat((embedded, c), dim=2)
         # dec_output = [batch_size, 1, hid_dim * 2]
         # s = [num_layers, batch_size, hid_dim * 2]

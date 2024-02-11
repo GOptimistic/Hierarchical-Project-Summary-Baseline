@@ -111,16 +111,16 @@ def train(opt):
                              pad_id=pad_token_id)
     valid_generator = DataLoader(valid_set, **valid_params)
 
-    if opt.model_level == 2:
-        model = Project2Seq_Two_Level(opt, pretrained_model, bos_token_id)
-    elif opt.model_level == 3:
-        model = Project2Seq_three_level(opt)
-    else:
-        model = Project2Seq(opt, pretrained_model, bos_token_id)
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+    if opt.model_level == 2:
+        model = Project2Seq_Two_Level(opt, pretrained_model, bos_token_id, device)
+    elif opt.model_level == 3:
+        model = Project2Seq_three_level(opt)
+    else:
+        model = Project2Seq(opt, pretrained_model, bos_token_id)
     model = model.to(device)
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
@@ -201,7 +201,7 @@ def train(opt):
         if (epoch + 1) % opt.valid_interval == 0:
             model.eval()
 
-            loss_val, bleu_val, acc_val = 0.0, 0.0, 0, 0
+            loss_val, bleu_val, acc_val = 0.0, 0.0, 0.0
             n = 0
             result_val = []
             for te_repo_info, te_repo_valid_len, te_summary, te_summary_valid_len in tqdm(valid_generator):

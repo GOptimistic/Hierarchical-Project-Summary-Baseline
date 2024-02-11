@@ -22,10 +22,10 @@ class TokenAttNet(nn.Module):
         vocab_size = configuration.vocab_size
         embedding_size = configuration.hidden_size
 
-        self.token_weight = nn.Parameter(torch.Tensor(2 * hidden_size, 2 * hidden_size))
-        self.token_bias = nn.Parameter(torch.Tensor(1, 2 * hidden_size))
-        self.context_weight = nn.Parameter(torch.Tensor(2 * hidden_size, 1))
-
+        # self.token_weight = nn.Parameter(torch.Tensor(2 * hidden_size, 2 * hidden_size))
+        # self.token_bias = nn.Parameter(torch.Tensor(1, 2 * hidden_size))
+        # self.context_weight = nn.Parameter(torch.Tensor(2 * hidden_size, 1))
+        self.n_layers = n_layers
         self.rnn = nn.GRU(embedding_size, hidden_size, n_layers, dropout=dropout, batch_first=True, bidirectional=True)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_size * 2, hidden_size * 2)

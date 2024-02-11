@@ -37,7 +37,7 @@ class Project2Seq_Two_Level(nn.Module):
         # encoder_outputs用来计算attention，s 用来初始化 Decoder
         encoder_outputs, s = self.encoder(repo_info, repo_valid_len)
 
-        decoder_input = torch.LongTensor([[self.bos_token_id]] * batch_size).to(self.device)
+        decoder_input = torch.LongTensor([self.bos_token_id] * batch_size).to(self.device)
         preds = []
         for t in range(self.target_len):
             output, s = self.decoder(decoder_input, s, encoder_outputs)
@@ -47,7 +47,7 @@ class Project2Seq_Two_Level(nn.Module):
             # 取出输出概率最大的词
             top1 = output.argmax(1)
             # teacher force 为 True 用正解训练，否则用预测到的最大概率的词训练
-            decoder_input = target[:, t] if teacher_force and t < target_len else top1
+            decoder_input = target[:, t] if teacher_force and t < self.target_len else top1
             preds.append(top1.unsqueeze(1))
         preds = torch.cat(preds, 1)
         return outputs, preds
@@ -60,11 +60,11 @@ class Project2Seq_Two_Level(nn.Module):
         # 准备一个tensor存储输出
         outputs = torch.zeros(batch_size, self.target_len, vocab_size).to(self.device)
         # encoder_outputs用来计算attention，s 用来初始化 Decoder
-        encoder_outputs, s = self.encoder(input)
+        encoder_outputs, s = self.encoder(repo_info, repo_valid_len)
 
-        decoder_input = torch.LongTensor([[self.bos_token_id]] * batch_size).to(self.device)
+        decoder_input = torch.LongTensor([self.bos_token_id] * batch_size).to(self.device)
         preds = []
-        for t in range(0, self.target_len):
+        for t in range(self.target_len):
             output, s = self.decoder(decoder_input, s, encoder_outputs)
             outputs[:, t] = output
             # 取出输出概率最大的词
