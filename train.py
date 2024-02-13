@@ -104,7 +104,6 @@ def train(opt):
 
     print("Model's parameters: {}".format(vars(opt)))
     training_params = {"batch_size": opt.batch_size,
-                       "shuffle": True,
                        "drop_last": True}
     valid_params = {"batch_size": opt.batch_size,
                     "shuffle": False,
