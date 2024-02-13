@@ -58,7 +58,7 @@ def get_args():
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=8)
-    parser.add_argument("--local_rank", default=os.getenv('LOCAL_RANK', -1), type=int)
+    parser.add_argument("--local-rank", default=os.getenv('LOCAL_RANK', -1), type=int)
     args = parser.parse_args()
     return args
 
@@ -74,6 +74,16 @@ def train(opt):
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    # ddp setting
+    if opt.local_rank != -1:
+        torch.cuda.set_device(opt.local_rank)
+        device = torch.device("cuda", opt.local_rank)
+        torch.distributed.init_process_group(backend="nccl", init_method='env://')
     lang = opt.lang
     # opt.repo_base_path = opt.repo_base_path + os.sep + lang
     opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
@@ -106,16 +116,7 @@ def train(opt):
     valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
     valid_generator = DataLoader(valid_set, **valid_params)
 
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
 
-    # ddp setting
-    if opt.local_rank != -1:
-        torch.cuda.set_device(opt.local_rank)
-        device = torch.device("cuda", opt.local_rank)
-        torch.distributed.init_process_group(backend="nccl", init_method='env://')
 
     if opt.model_level == 2:
         model = Project2Seq_Two_Level(opt, pretrained_model, bos_token_id, device)
@@ -202,7 +203,8 @@ def train(opt):
             # grad_norm = torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1)
             optimizer.step()
             accuracy = torch.eq(outputs.argmax(1), summary).float().mean().item()
-            print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
+            print("### GPU: {} Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
+                opt.local_rank,
                 epoch + 1,
                 opt.num_epoches,
                 iter_index,
@@ -210,8 +212,8 @@ def train(opt):
                 optimizer.param_groups[0]['lr'],
                 loss,
                 accuracy))
-            writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
-            writer.add_scalar('Train/Accuracy', accuracy, epoch * num_iter_per_epoch + iter_index)
+            writer.add_scalar('Train/Loss-{}'.format(opt.local_rank), loss, epoch * num_iter_per_epoch + iter_index)
+            writer.add_scalar('Train/Accuracy-{}'.format(opt.local_rank), accuracy, epoch * num_iter_per_epoch + iter_index)
             train_losses.append(loss)
         torch.distributed.barrier()
         if (epoch + 1) % opt.valid_interval == 0 and opt.local_rank in [-1, 0]:
@@ -260,16 +262,17 @@ def train(opt):
                 best_loss = loss_val
                 best_epoch = epoch
 
-            print("@@@@@@ Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+            print("@@@ GPU: {} Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+                opt.local_rank,
                 epoch + 1,
                 opt.num_epoches,
                 optimizer.param_groups[0]['lr'],
                 loss_val,
                 acc_val,
                 bleu_val))
-            writer.add_scalar('Valid/Loss', loss_val, epoch)
-            writer.add_scalar('Valid/Accuracy', acc_val, epoch)
-            writer.add_scalar('Valid/Bleu-4', bleu_val, epoch)
+            writer.add_scalar('Valid/Loss-{}'.format(opt.local_rank), loss_val, epoch)
+            writer.add_scalar('Valid/Accuracy-{}'.format(opt.local_rank), acc_val, epoch)
+            writer.add_scalar('Valid/Bleu-4-{}'.format(opt.local_rank), bleu_val, epoch)
 
             # 保存模型
             checkpoint = {"model_state_dict": model.state_dict(),
