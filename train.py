@@ -4,7 +4,7 @@
 import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, DistributedSampler
 from transformers import AutoTokenizer, AutoModel
 
 from src.model.Project2Seq import Project2Seq
@@ -57,6 +57,8 @@ def get_args():
     parser.add_argument("--valid_total_length", type=int, default="3045")
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--local_rank", default=os.getenv('LOCAL_RANK', -1), type=int)
     args = parser.parse_args()
     return args
 
@@ -99,7 +101,8 @@ def train(opt):
                     "drop_last": False}
 
     training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length, opt.max_length_token)
-    training_generator = DataLoader(training_set, **training_params)
+    train_sampler = DistributedSampler(training_set)
+    training_generator = DataLoader(training_set, sampler=train_sampler, pin_memory=True, num_workers=opt.num_workers, **training_params)
     valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
     valid_generator = DataLoader(valid_set, **valid_params)
 
@@ -107,6 +110,13 @@ def train(opt):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
+
+    # ddp setting
+    if opt.local_rank != -1:
+        torch.cuda.set_device(opt.local_rank)
+        device = torch.device("cuda", opt.local_rank)
+        torch.distributed.init_process_group(backend="nccl", init_method='env://')
+
     if opt.model_level == 2:
         model = Project2Seq_Two_Level(opt, pretrained_model, bos_token_id, device)
     elif opt.model_level == 3:
@@ -123,6 +133,13 @@ def train(opt):
                  (opt.batch_size, opt.max_length_summary),
                  (1,)],
                 dtypes=[torch.long, torch.long, torch.long, torch.float])
+
+    num_gpus = torch.cuda.device_count()
+    if num_gpus > 1:
+        print('use {} gpus!'.format(num_gpus))
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[opt.local_rank],
+                                                    output_device=opt.local_rank)
+
     if os.path.isdir(opt.log_path):
         shutil.rmtree(opt.log_path)
     os.makedirs(opt.log_path)
@@ -162,6 +179,7 @@ def train(opt):
         print("###### Epoch {} start:".format(epoch + 1))
         iter_index = 0
         model.train()
+        train_sampler.set_epoch(epoch) #shuffle
         for repo_info, repo_valid_len, summary, summary_valid_len in tqdm(training_generator):
             iter_index = iter_index + 1
             repo_info = repo_info.to(device)
@@ -195,7 +213,8 @@ def train(opt):
             writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
             writer.add_scalar('Train/Accuracy', accuracy, epoch * num_iter_per_epoch + iter_index)
             train_losses.append(loss)
-        if (epoch + 1) % opt.valid_interval == 0:
+        torch.distributed.barrier()
+        if (epoch + 1) % opt.valid_interval == 0 and opt.local_rank in [-1, 0]:
             model.eval()
 
             loss_val, bleu_val, acc_val = 0.0, 0.0, 0.0
@@ -260,12 +279,9 @@ def train(opt):
                           "best_epoch": best_epoch}
             path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
             torch.save(checkpoint, path_checkpoint)
-            # torch.save(model.state_dict(), opt.saved_path + os.sep + "checkpoint_{}.pt".format(epoch + 1))
-            #
-            # # Early stopping
-            # if epoch - best_epoch > opt.es_patience > 0:
-            #     print("Stop training at epoch {}. The lowest loss achieved is {}".format(epoch, te_loss))
-            #     break
+
+        torch.distributed.barrier()
+        model.train()
 
     writer.close()
     # torch.autograd.set_detect_anomaly(False)
