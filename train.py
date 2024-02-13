@@ -220,12 +220,11 @@ def train(opt):
                 # 将预测结果转为文字
                 te_summary = te_summary.view(te_repo_info.size(0), -1)
                 preds_val = tokenizer.batch_decode(preds_val)
-                sources_val = tokenizer.batch_decode(te_repo_info)
                 targets_val = tokenizer.batch_decode(te_summary)
 
                 # 记录验证集结果
-                for source, pred, target in zip(sources_val, preds_val, targets_val):
-                    result_val.append((source, pred, target))
+                for pred, target in zip(preds_val, targets_val):
+                    result_val.append((pred, target))
                 # 计算 Bleu Score
                 bleu_val += computebleu(preds_val, targets_val)
                 n += batch_size
