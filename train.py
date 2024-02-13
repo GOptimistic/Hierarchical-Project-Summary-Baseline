@@ -57,7 +57,7 @@ def get_args():
     parser.add_argument("--valid_total_length", type=int, default="3045")
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.5)
-    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--local-rank", default=os.getenv('LOCAL_RANK', -1), type=int)
     args = parser.parse_args()
     return args
@@ -89,7 +89,7 @@ def train(opt):
     opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
     opt.valid_data_path_prefix = opt.valid_data_path_prefix + lang + "_"
     opt.saved_path = opt.saved_path + os.sep + lang
-    opt.log_path = opt.log_path + os.sep + lang
+    opt.log_path = opt.log_path + os.sep + lang + os.sep + "gpu-{}".format(opt.local_rank)
     if not os.path.exists(opt.log_path):
         os.mkdir(opt.log_path)
     bleu_path = opt.saved_path + os.sep + 'bleu'
@@ -159,7 +159,7 @@ def train(opt):
     if opt.checkpoint > 0:
         checkpoint_path = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(opt.checkpoint)
         checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.module.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch_finished = checkpoint['epoch']
         best_loss = checkpoint['best_loss']
@@ -228,7 +228,7 @@ def train(opt):
                 # te_summary_valid_len = te_summary_valid_len.to(device)
                 batch_size = te_repo_info.size(0)
                 # print(batch_size)
-                outputs_val, preds_val = model.evaluation(te_repo_info, te_repo_valid_len)
+                outputs_val, preds_val = model.module.evaluation(te_repo_info, te_repo_valid_len)
                 # targets 的第一个 token 是 '<BOS>' 所以忽略
                 outputs_val = outputs_val.reshape(-1, outputs_val.size(2))
                 te_summary = te_summary.reshape(-1)
@@ -239,12 +239,11 @@ def train(opt):
                 # 将预测结果转为文字
                 te_summary = te_summary.view(te_repo_info.size(0), -1)
                 preds_val = tokenizer.batch_decode(preds_val)
-                sources_val = tokenizer.batch_decode(te_repo_info)
                 targets_val = tokenizer.batch_decode(te_summary)
 
                 # 记录验证集结果
-                for source, pred, target in zip(sources_val, preds_val, targets_val):
-                    result_val.append((source, pred, target))
+                for pred, target in zip(preds_val, targets_val):
+                    result_val.append((pred, target))
                 # 计算 Bleu Score
                 bleu_val += computebleu(preds_val, targets_val)
                 n += batch_size
@@ -274,7 +273,7 @@ def train(opt):
             writer.add_scalar('Valid/Bleu-4-{}'.format(opt.local_rank), bleu_val, epoch)
 
             # 保存模型
-            checkpoint = {"model_state_dict": model.state_dict(),
+            checkpoint = {"model_state_dict": model.module.state_dict(),
                           "optimizer_state_dict": optimizer.state_dict(),
                           "epoch": epoch + 1,
                           "best_loss": best_loss,
