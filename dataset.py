@@ -14,6 +14,8 @@ import csv
 from nltk.tokenize import sent_tokenize, word_tokenize
 import numpy as np
 from random import sample
+
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 csv.field_size_limit(sys.maxsize)
@@ -129,33 +131,40 @@ class MyDataset(Dataset):
 
 
 if __name__ == '__main__':
-    # test = MyDataset(data_path="./data/data_python_output_100rows.csv", repo_base_path="./data/python",
-    #                  pretrained_model="./pretrained/codebert-base")
-    # # print(test.__getitem__(index=1)[1].shape)
+    test = MyDataset("./src/data/java/data_java_train.csv",
+                     "../clone_github_repo_data/github_repo_data",
+                     "./src/pretrained/codebert-base",
+                     5,
+                     5,
+                     5,
+                     30,
+                     30)
+    # print(test.__getitem__(index=1)[1].shape)
+
+    training_params = {"batch_size": 16,
+                       "shuffle": True,
+                       "drop_last": True}
+    training_generator = DataLoader(test, **training_params)
+    for feature, label in tqdm(training_generator):
+        print(feature.shape)
+        print(label.shape)
+
+    # model = AutoModel.from_pretrained("./pretrained/codebert-base")
+    # tokenizer = AutoTokenizer.from_pretrained("./pretrained/codebert-base")
+    # configuration = model.config
+    # print(configuration.vocab_size)
+    # print(configuration.hidden_size)
     #
-    # training_params = {"batch_size": 3,
-    #                    "shuffle": True,
-    #                    "drop_last": True}
-    # training_generator = DataLoader(test, **training_params)
-    # for iter, (feature, label) in enumerate(training_generator):
-    #     print(feature.shape)
-    #     print(label.shape)
-    model = AutoModel.from_pretrained("./pretrained/codebert-base")
-    tokenizer = AutoTokenizer.from_pretrained("./pretrained/codebert-base")
-    configuration = model.config
-    print(configuration.vocab_size)
-    print(configuration.hidden_size)
-
-    CODE = "def max(a,b): if a>b: return a else return b"
-    code_tokens = tokenizer.tokenize(CODE)
-    tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.pad_token for i in range(5)] + [tokenizer.eos_token]
-    print(tokens)
-    tokens_ids = tokenizer.convert_tokens_to_ids(tokens)
-    print(tokens_ids)
-    print(tokenizer.decode(tokens_ids))
-
-    convert_code = tokenizer.convert_ids_to_tokens(tokens_ids)
-    print(convert_code)
+    # CODE = "def max(a,b): if a>b: return a else return b"
+    # code_tokens = tokenizer.tokenize(CODE)
+    # tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.pad_token for i in range(5)] + [tokenizer.eos_token]
+    # print(tokens)
+    # tokens_ids = tokenizer.convert_tokens_to_ids(tokens)
+    # print(tokens_ids)
+    # print(tokenizer.decode(tokens_ids))
+    #
+    # convert_code = tokenizer.convert_ids_to_tokens(tokens_ids)
+    # print(convert_code)
 
     # print(len(tokens_ids))
     # batch_token_ids = [tokens_ids for _ in range(10)]
