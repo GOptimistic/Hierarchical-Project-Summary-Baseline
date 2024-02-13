@@ -34,12 +34,12 @@ class GruDecoder(nn.Module):
     def forward(self, input, s, enc_outputs):
         # input = [batch size] 都是<BOS>
         # s = [num_layers, batch_size, hidden_size * 2]
-        # enc_outputs = [batch_size, max_length_token, hidden_size * 2]
+        # enc_outputs = [batch_size, package_size, hidden_size * 2]
         # Decoder 是单向，所以 directions=1
         input = input.unsqueeze(1)
         # embedded = [batch size, 1, embedding_dim]
         embedded = self.dropout(self.embedding(input))
-        # a = [batch_size, 1, max_length_token]
+        # a = [batch_size, 1, package_size]
         a = self.attention(enc_outputs, s).unsqueeze(1)
         # c = [batch_size, 1, hid_dim * 2]
         c = torch.bmm(a, enc_outputs)

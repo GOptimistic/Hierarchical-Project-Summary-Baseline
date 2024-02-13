@@ -4,37 +4,43 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from src.model.attention.NormalAttention import NormalAttention
 from src.utils import matrix_mul, element_wise_mul, masked_softmax
 
 
 class FileAttNet(nn.Module):
-    def __init__(self, file_hidden_size=128, method_hidden_size=128):
+    def __init__(self, file_hidden_size=128, method_hidden_size=128, n_layers=1, dropout=0.5):
         super(FileAttNet, self).__init__()
 
-        self.file_weight = nn.Parameter(torch.Tensor(2 * file_hidden_size, 2 * file_hidden_size))
-        self.file_bias = nn.Parameter(torch.Tensor(1, 2 * file_hidden_size))
-        self.context_weight = nn.Parameter(torch.Tensor(2 * file_hidden_size, 1))
+        self.n_layers = n_layers
+        self.rnn = nn.GRU(method_hidden_size * 2, file_hidden_size, n_layers, dropout=dropout, batch_first=True,
+                          bidirectional=True)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(file_hidden_size * 2, file_hidden_size * 2)
+        self.file_attention = NormalAttention(file_hidden_size)
 
-        self.gru = nn.GRU(2 * method_hidden_size, file_hidden_size, bidirectional=True)
-        # self.fc = nn.Linear(2 * file_hidden_size, num_classes)
-        # self.file_softmax = nn.Softmax()
-        # self.fc_softmax = nn.Softmax()
-        self._create_weights(mean=0.0, std=0.05)
+    def forward(self, file_input, file_valid_len):
+        # file_input: [batch_size, file_size, 2*method_hidden_size]
+        # file_valid_len: [batch_size]
+        batch_size = file_input.shape[0]
+        # outputs [batch_size, file_size, 2*file_hidden_size] hidden [2*n_layers, file_size, file_hidden_size]
+        outputs, hidden = self.rnn(self.dropout(file_input))
+        # 因为 Encoder 是双向RNN，所以需要对同一层两个方向的 hidden state 进行拼接
+        # hidden = [num_layers * 2, batch_size, file_hidden_size] --> [num_layers, directions, batch_size, file_hidden_size]
+        hidden = hidden.view(self.n_layers, 2, batch_size, -1)
+        # s = [num_layers, batch_size, file_hidden_size * 2]
+        s = torch.cat((hidden[:, -2, :, :], hidden[:, -1, :, :]), dim=2)
+        s = torch.tanh(self.fc(s))
 
-    def _create_weights(self, mean=0.0, std=0.05):
-        self.file_weight.data.normal_(mean, std)
-        self.context_weight.data.normal_(mean, std)
+        # outputs [batch_size, file_size, 2*file_hidden_size]
+        # s = [num_layers, batch_size, file_hidden_size * 2]
 
-    def forward(self, input, hidden_state, valid_len):
-        # input: [file_size, batch_size, 2*method_hidden_size] valid_len: [batch_size]
-        f_output, h_output = self.gru(input, hidden_state)
-        output = matrix_mul(f_output, self.file_weight, self.file_bias) # [file_size, batch_size, 2*file_hidden_size]
-        output = matrix_mul(output, self.context_weight).permute(1, 0)  # [batch_size, file_size]
-        output = masked_softmax(output, valid_len)  # [batch_size, file_size]
-        # f_output: [file_size, batch_size, 2*file_hidden_size]
-        output = element_wise_mul(f_output, output.permute(1, 0))    # [1, batch_size, 2*file_hidden_size]
-
-        return output, h_output
+        # a = [batch_size, 1, file_size]
+        a = self.file_attention(outputs, s).unsqueeze(1)
+        package_embedding = torch.bmm(a, outputs)
+        # package_embedding [batch_size, 1, 2*file_hidden_size]
+        return package_embedding
 
 
 if __name__ == "__main__":

@@ -4,7 +4,6 @@ import random
 
 from src.model.attention.NormalAttention import NormalAttention
 from src.model.decoder.gru_decoder import GruDecoder
-from src.model.encoder.hierarchical_att_model import HierAttNet
 from src.model.encoder.hierarchical_att_model_two_level import HierAttNet_Two_Level
 
 
