@@ -57,6 +57,7 @@ def get_args():
     parser.add_argument("--valid_total_length", type=int, default="3045")
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--num_workers", type=int, default=8)
     args = parser.parse_args()
     return args
 
@@ -99,9 +100,9 @@ def train(opt):
                     "drop_last": False}
 
     training_set = MyDataset(opt.data_dir_path, opt.train_data_path_prefix, opt.train_part_size, opt.train_total_length, opt.max_length_token)
-    training_generator = DataLoader(training_set, **training_params)
+    training_generator = DataLoader(training_set, num_workers=opt.num_workers, **training_params)
     valid_set = MyDataset(opt.data_dir_path, opt.valid_data_path_prefix, opt.valid_part_size, opt.valid_total_length, opt.max_length_token)
-    valid_generator = DataLoader(valid_set, **valid_params)
+    valid_generator = DataLoader(valid_set, num_workers=opt.num_workers, **valid_params)
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
