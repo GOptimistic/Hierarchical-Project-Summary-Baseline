@@ -125,14 +125,14 @@ def train(opt):
         model = Project2Seq(opt, pretrained_model, bos_token_id, device)
     model = model.to(device)
     total_params, trainable_params = count_parameters(model)
-    print(f"Total parameters: {total_params}")
-    print(f"Trainable parameters: {trainable_params}")
-    infoSummary(model,
-                [(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token),
-                 (opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method),
-                 (opt.batch_size, opt.max_length_summary),
-                 (1,)],
-                dtypes=[torch.long, torch.long, torch.long, torch.float])
+    # print(f"Total parameters: {total_params}")
+    # print(f"Trainable parameters: {trainable_params}")
+    # infoSummary(model,
+                 # [(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method, opt.max_length_token),
+                 # (opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method),
+                 # (opt.batch_size, opt.max_length_summary),
+                 # (1,)],
+                # dtypes=[torch.long, torch.long, torch.long, torch.float])
 
     num_gpus = torch.cuda.device_count()
     if num_gpus > 1:
