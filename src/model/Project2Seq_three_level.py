@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from src.model.decoder.gru_decoder import GruDecoder
-from src.model.encoder.hierarchical_att_model import HierAttNet
 from src.model.encoder.hierarchical_att_model_three_level import HierAttNet_three_level
 
 

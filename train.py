@@ -23,19 +23,19 @@ from torchinfo import summary as infoSummary
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--num_epoches", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--token_hidden_size", type=int, default=128)
-    parser.add_argument("--method_hidden_size", type=int, default=128)
-    parser.add_argument("--file_hidden_size", type=int, default=128)
-    parser.add_argument("--package_hidden_size", type=int, default=128)
+    parser.add_argument("--token_hidden_size", type=int, default=32)
+    parser.add_argument("--method_hidden_size", type=int, default=32)
+    parser.add_argument("--file_hidden_size", type=int, default=32)
+    parser.add_argument("--package_hidden_size", type=int, default=32)
     parser.add_argument("--es_min_delta", type=float, default=0.0,
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
                         help="Early stopping's parameter: number of epochs with no improvement after which training will be stopped. Set to 0 to disable this technique.")
-    parser.add_argument("--data_dir_path", type=str, default="../clone_github_repo_data/java/hdf5_no_compress_data/")
+    parser.add_argument("--data_dir_path", type=str, default="../clone_github_repo_data/java/hdf5_no_compress_data")
     parser.add_argument("--train_data_path_prefix", type=str, default="train_")
     parser.add_argument("--valid_data_path_prefix", type=str, default="valid_")
     parser.add_argument("--valid_interval", type=int, default=1, help="Number of epoches between testing phases")
@@ -46,7 +46,7 @@ def get_args():
     parser.add_argument("--max_length_package", type=int, default=30)
     parser.add_argument("--max_length_file", type=int, default=10)
     parser.add_argument("--max_length_method", type=int, default=20)
-    parser.add_argument("--max_length_token", type=int, default=350)
+    parser.add_argument("--max_length_token", type=int, default=20)
     parser.add_argument("--max_length_summary", type=int, default=40)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
@@ -74,8 +74,8 @@ def train(opt):
         torch.manual_seed(123)
     lang = opt.lang
     # opt.repo_base_path = opt.repo_base_path + os.sep + lang
-    # opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
-    # opt.valid_data_path_prefix = opt.valid_data_path_prefix + lang + "_"
+    opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
+    opt.valid_data_path_prefix = opt.valid_data_path_prefix + lang + "_"
     opt.saved_path = opt.saved_path + os.sep + lang
     opt.log_path = opt.log_path + os.sep + lang
     if not os.path.exists(opt.log_path):
