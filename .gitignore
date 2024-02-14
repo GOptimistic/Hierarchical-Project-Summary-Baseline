@@ -11,3 +11,4 @@ trained_models_three_level/
 __pycache__/
 *.py[cod]
 *$py.class
+screenlog*

@@ -127,6 +127,21 @@ def train(opt):
         model = Project2Seq(opt, pretrained_model, bos_token_id, device)
     model = model.to(device)
     total_params, trainable_params = count_parameters(model)
+    criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
+    # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, momentum=opt.momentum)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr)
+    best_loss = 1e9
+    best_epoch = 0
+    epoch_finished = -1
+    if opt.checkpoint > 0:
+        checkpoint_path = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(opt.checkpoint)
+        checkpoint = torch.load(checkpoint_path, map_location='cuda:{}'.format(opt.local_rank))
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch_finished = checkpoint['epoch']
+        best_loss = checkpoint['best_loss']
+        best_epoch = checkpoint['best_epoch']
+        torch.cuda.empty_cache()
     # print(f"Total parameters: {total_params}")
     # print(f"Trainable parameters: {trainable_params}")
     # infoSummary(model,
@@ -151,22 +166,6 @@ def train(opt):
     #                  torch.zeros(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_method).long().to(device),
     #                  torch.zeros(opt.batch_size, opt.max_length_summary).long().to(device)))
 
-
-    criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
-    # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, momentum=opt.momentum)
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr)
-    best_loss = 1e9
-    best_epoch = 0
-    epoch_finished = -1
-    if opt.checkpoint > 0:
-        checkpoint_path = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(opt.checkpoint)
-        checkpoint = torch.load(checkpoint_path)
-        model.module.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch_finished = checkpoint['epoch']
-        best_loss = checkpoint['best_loss']
-        best_epoch = checkpoint['best_epoch']
-        torch.cuda.empty_cache()
 
     # torch.autograd.set_detect_anomaly(True)
     model.train()
