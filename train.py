@@ -57,7 +57,7 @@ def get_args():
     parser.add_argument("--valid_total_length", type=int, default="3045")
     parser.add_argument("--n_layers", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.5)
-    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--num_workers", type=int, default=2)
     args = parser.parse_args()
     return args
 
