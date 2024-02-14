@@ -2,6 +2,8 @@
 @author: Guan Zheng <wwwguanzheng@163.com>
 """
 import os
+from datetime import timedelta
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, DistributedSampler
@@ -83,7 +85,7 @@ def train(opt):
     if opt.local_rank != -1:
         torch.cuda.set_device(opt.local_rank)
         device = torch.device("cuda", opt.local_rank)
-        torch.distributed.init_process_group(backend="nccl", init_method='env://')
+        torch.distributed.init_process_group(backend="nccl", timeout=timedelta(seconds=7200000), init_method='env://')
     lang = opt.lang
     # opt.repo_base_path = opt.repo_base_path + os.sep + lang
     opt.train_data_path_prefix = opt.train_data_path_prefix + lang + "_"
