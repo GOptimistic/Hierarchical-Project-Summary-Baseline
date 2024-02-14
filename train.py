@@ -166,6 +166,7 @@ def train(opt):
         epoch_finished = checkpoint['epoch']
         best_loss = checkpoint['best_loss']
         best_epoch = checkpoint['best_epoch']
+        torch.cuda.empty_cache()
 
     # torch.autograd.set_detect_anomaly(True)
     model.train()
@@ -218,70 +219,73 @@ def train(opt):
             train_losses.append(loss)
         torch.distributed.barrier()
         if (epoch + 1) % opt.valid_interval == 0 and opt.local_rank in [-1, 0]:
-            model.eval()
+            with torch.no_grad():
+                model.eval()
 
-            loss_val, bleu_val, acc_val = 0.0, 0.0, 0.0
-            n = 0
-            result_val = []
-            for te_repo_info, te_repo_valid_len, te_summary, te_summary_valid_len in tqdm(valid_generator):
-                te_repo_info = te_repo_info.to(device)
-                te_repo_valid_len = te_repo_valid_len.to(device)
-                te_summary = te_summary.to(device)
-                # te_summary_valid_len = te_summary_valid_len.to(device)
-                batch_size = te_repo_info.size(0)
-                # print(batch_size)
-                outputs_val, preds_val = model.module.evaluation(te_repo_info, te_repo_valid_len)
-                # targets 的第一个 token 是 '<BOS>' 所以忽略
-                outputs_val = outputs_val.reshape(-1, outputs_val.size(2))
-                te_summary = te_summary.reshape(-1)
-                loss = criterion(outputs_val, te_summary)
-                loss_val += loss.item()
-                acc_val += torch.eq(outputs_val.argmax(1), te_summary).float().mean().item()
+                loss_val, bleu_val, acc_val = 0.0, 0.0, 0.0
+                n = 0
+                result_val = []
+                for te_repo_info, te_repo_valid_len, te_summary, te_summary_valid_len in tqdm(valid_generator):
+                    te_repo_info = te_repo_info.to(device)
+                    te_repo_valid_len = te_repo_valid_len.to(device)
+                    te_summary = te_summary.to(device)
+                    # te_summary_valid_len = te_summary_valid_len.to(device)
+                    batch_size = te_repo_info.size(0)
+                    # print(batch_size)
+                    outputs_val, preds_val = model.module.evaluation(te_repo_info, te_repo_valid_len)
+                    # targets 的第一个 token 是 '<BOS>' 所以忽略
+                    outputs_val = outputs_val.reshape(-1, outputs_val.size(2))
+                    te_summary = te_summary.reshape(-1)
+                    loss = criterion(outputs_val, te_summary)
+                    loss_val += loss.item()
+                    acc_val += torch.eq(outputs_val.argmax(1), te_summary).float().mean().item()
 
-                # 将预测结果转为文字
-                te_summary = te_summary.view(te_repo_info.size(0), -1)
-                preds_val = tokenizer.batch_decode(preds_val)
-                targets_val = tokenizer.batch_decode(te_summary)
+                    # 将预测结果转为文字
+                    te_summary = te_summary.view(te_repo_info.size(0), -1)
+                    preds_val = tokenizer.batch_decode(preds_val)
+                    targets_val = tokenizer.batch_decode(te_summary)
 
-                # 记录验证集结果
-                for pred, target in zip(preds_val, targets_val):
-                    result_val.append((pred, target))
-                # 计算 Bleu Score
-                bleu_val += computebleu(preds_val, targets_val)
-                n += batch_size
-            loss_val = loss_val / len(valid_generator)
-            acc_val = acc_val / len(valid_generator)
-            bleu_val = bleu_val / n
-            val_losses.append(loss_val)
-            val_bleu_scores.append(bleu_val)
-            # 储存结果
-            with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
-                for line in result_val:
-                    print(line, file=f)
-            if loss_val + opt.es_min_delta < best_loss:
-                best_loss = loss_val
-                best_epoch = epoch
+                    # 记录验证集结果
+                    for pred, target in zip(preds_val, targets_val):
+                        result_val.append((pred, target))
+                    # 计算 Bleu Score
+                    bleu_val += computebleu(preds_val, targets_val)
+                    n += batch_size
+                loss_val = loss_val / len(valid_generator)
+                acc_val = acc_val / len(valid_generator)
+                bleu_val = bleu_val / n
+                val_losses.append(loss_val)
+                val_bleu_scores.append(bleu_val)
+                # 储存结果
+                with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
+                    for line in result_val:
+                        print(line, file=f)
+                if loss_val + opt.es_min_delta < best_loss:
+                    best_loss = loss_val
+                    best_epoch = epoch
 
-            print("@@@ GPU: {} Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
-                opt.local_rank,
-                epoch + 1,
-                opt.num_epoches,
-                optimizer.param_groups[0]['lr'],
-                loss_val,
-                acc_val,
-                bleu_val))
-            writer.add_scalar('Valid/Loss-{}'.format(opt.local_rank), loss_val, epoch)
-            writer.add_scalar('Valid/Accuracy-{}'.format(opt.local_rank), acc_val, epoch)
-            writer.add_scalar('Valid/Bleu-4-{}'.format(opt.local_rank), bleu_val, epoch)
+                print("@@@ GPU: {} Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+                    opt.local_rank,
+                    epoch + 1,
+                    opt.num_epoches,
+                    optimizer.param_groups[0]['lr'],
+                    loss_val,
+                    acc_val,
+                    bleu_val))
+                writer.add_scalar('Valid/Loss-{}'.format(opt.local_rank), loss_val, epoch)
+                writer.add_scalar('Valid/Accuracy-{}'.format(opt.local_rank), acc_val, epoch)
+                writer.add_scalar('Valid/Bleu-4-{}'.format(opt.local_rank), bleu_val, epoch)
 
-            # 保存模型
-            checkpoint = {"model_state_dict": model.module.state_dict(),
-                          "optimizer_state_dict": optimizer.state_dict(),
-                          "epoch": epoch + 1,
-                          "best_loss": best_loss,
-                          "best_epoch": best_epoch}
-            path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
-            torch.save(checkpoint, path_checkpoint)
+                # 保存模型
+                checkpoint = {"model_state_dict": model.module.state_dict(),
+                              "optimizer_state_dict": optimizer.state_dict(),
+                              "epoch": epoch + 1,
+                              "best_loss": best_loss,
+                              "best_epoch": best_epoch}
+                path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
+                torch.save(checkpoint, path_checkpoint)
+                torch.cuda.empty_cache()
+                print("Clear the cuda cache")
 
         torch.distributed.barrier()
         model.train()
