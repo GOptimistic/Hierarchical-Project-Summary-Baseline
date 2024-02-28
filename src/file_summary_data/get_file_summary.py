@@ -79,6 +79,7 @@ def run_single_process(config, data_list, node_index):
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_path, trust_remote_code=True).half()
     device = "cuda:{}".format(node_index)
+    print(device)
     model.to(device)
     model = model.eval()
     with open(config.output_data_path + os.sep + 'data_{}_file_summary_{}_{}.csv'.format(config.lang, config.start_part_index, node_index), 'w', newline='') as out_file:
@@ -100,6 +101,7 @@ def run_single_process(config, data_list, node_index):
 
 def run_multi_process(config):
     repos_and_summaries = []
+    index = 0
     with open(config.csv_data_path, 'r') as in_file:
         csv_reader = csv.reader(in_file)
         for row in csv_reader:
@@ -109,10 +111,10 @@ def run_multi_process(config):
             full_name = row[1]
             summary = row[9].strip().replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
             repos_and_summaries.append((full_name, summary))
-            print((full_name, summary))
+            # print((full_name, summary))
             index = index + 1
 
-
+    print(len(repos_and_summaries))
     processes = []
     for i in range(config.node_num):
         start_index = (config.start_part_index + i) * config.data_part_size
