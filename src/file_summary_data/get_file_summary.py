@@ -100,7 +100,7 @@ def run_single_process(config, data_list, node_index):
             full_name = data[0]
             summary = data[1]
             json_path = config.repo_path + os.sep + full_name.replace('/', '_') + '/repo_tree_info.json'
-            file_summaries = get_single_project_file_summary(json_path, model, tokenizer, config.lang)
+            file_summaries = get_single_project_file_summary(json_path, model, tokenizer, config.lang, config.max_length_package, config.max_length_file)
             csv_witer.writerow([full_name, json.dumps(file_summaries), summary])
             print('part {} node {} index {}'.format(config.start_part_index, node_index, i))
 
