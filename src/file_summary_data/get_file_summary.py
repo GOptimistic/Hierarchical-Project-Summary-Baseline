@@ -1,5 +1,5 @@
 import re
-
+from random import sample
 from transformers import AutoTokenizer, AutoModel
 import time
 import json
@@ -30,24 +30,32 @@ def get_args():
     parser.add_argument("--csv_data_path", type=str, default="/home/LAB/guanz/gz_graduation/clone_github_repo_data/java/data_java_output_filtered_with_json.csv")
     parser.add_argument("--output_data_path", type=str, default="/home/LAB/guanz/gz_graduation/model_file_summary/src/file_summary_data/file_data")
     parser.add_argument("--repo_path", type=str, default="/home/LAB/guanz/gz_graduation/clone_github_repo_data/github_repo_data")
+    parser.add_argument("--max_length_package", type=int, default=20)
+    parser.add_argument("--max_length_file", type=int, default=5)
 
     args = parser.parse_args()
     return args
 
 
-def get_single_project_file_summary(json_path, model, tokenizer, lang):
+def get_single_project_file_summary(json_path, model, tokenizer, lang, max_length_package, max_length_file):
     with open(json_path, 'r', encoding='utf-8') as f:
         text = f.read()
     project = json.loads(text)
     packages = project["packages"]
     project_name = project["full_name"].split('/')[1]
     file_summaries = {}
-    for package in packages.keys():
+    package_keys = packages.keys()
+    if len(package_keys) > max_length_package:
+        package_keys = sample(package_keys, max_length_package)
+    for package in package_keys:
         if len(re.findall(filterout_regex, package, re.IGNORECASE)) != 0:
             continue
         package_info = {}
         files = packages[package]['files']
-        for file in files.keys():
+        files_keys = files.keys()
+        if len(files_keys) > max_length_file:
+            files_keys = sample(files_keys, max_length_file)
+        for file in files_keys:
             if len(re.findall(filterout_regex, file, re.IGNORECASE)) != 0:
                 continue
             methods = files[file]['methods']
