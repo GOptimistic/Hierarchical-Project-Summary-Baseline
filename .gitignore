@@ -8,6 +8,8 @@ trained_models/
 logs_three/
 trained_models_three_level/
 *.log
+screenlog.0
+*.csv
 __pycache__/
 *.py[cod]
 *$py.class

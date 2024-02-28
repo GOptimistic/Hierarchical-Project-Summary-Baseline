@@ -1,1 +1,4 @@
-test
+分支two_stages_model将五层模型的链路切分成两部分，以file层为切割点
+前一阶段采用chatglm大模型离线生成每个file的摘要，后一阶段采用两层模型生成project级别的向量信息，输出到解码器进行摘要生成
+
+file_summary_data存放chatglm生成的文件级别摘要
