@@ -8,6 +8,7 @@ from multiprocessing import Process
 import csv
 import sys
 import os
+import torch
 
 csv.field_size_limit(sys.maxsize)
 
@@ -30,7 +31,7 @@ def get_args():
     parser.add_argument("--csv_data_path", type=str, default="/home/LAB/guanz/gz_graduation/clone_github_repo_data/java/data_java_output_filtered_with_json.csv")
     parser.add_argument("--output_data_path", type=str, default="/home/LAB/guanz/gz_graduation/model_file_summary/src/file_summary_data/file_data")
     parser.add_argument("--repo_path", type=str, default="/home/LAB/guanz/gz_graduation/clone_github_repo_data/github_repo_data")
-    parser.add_argument("--max_length_package", type=int, default=20)
+    parser.add_argument("--max_length_package", type=int, default=5)
     parser.add_argument("--max_length_file", type=int, default=5)
 
     args = parser.parse_args()
@@ -38,6 +39,7 @@ def get_args():
 
 
 def get_single_project_file_summary(json_path, model, tokenizer, lang, max_length_package, max_length_file):
+    sequence_max_length = model.config.seq_length
     with open(json_path, 'r', encoding='utf-8') as f:
         text = f.read()
     project = json.loads(text)
@@ -76,6 +78,8 @@ def get_single_project_file_summary(json_path, model, tokenizer, lang, max_lengt
                 package
             )
             question = question + methods_text
+            if len(tokenizer.tokenize(question)) >= sequence_max_length:
+                continue
             response, history = model.chat(tokenizer, question, history=[])
             package_info[file] = response
         file_summaries[package] = package_info
@@ -100,8 +104,18 @@ def run_single_process(config, data_list, node_index):
             full_name = data[0]
             summary = data[1]
             json_path = config.repo_path + os.sep + full_name.replace('/', '_') + '/repo_tree_info.json'
-            file_summaries = get_single_project_file_summary(json_path, model, tokenizer, config.lang, config.max_length_package, config.max_length_file)
-            csv_witer.writerow([full_name, json.dumps(file_summaries), summary])
+            try:
+                file_summaries = get_single_project_file_summary(json_path, model, tokenizer, config.lang, config.max_length_package, config.max_length_file)
+                csv_witer.writerow([full_name, json.dumps(file_summaries), summary])
+            except RuntimeError as exception:
+                if "CUDA out of memory" in str(exception):
+                    print("ERROR: out of memory. part {} node {} index {}".format(config.start_part_index, node_index, i))
+                    if hasattr(torch.cuda, 'empty_cache'):
+                        torch.cuda.empty_cache()
+                    continue
+                else:
+                    raise exception
+
             print('part {} node {} index {}'.format(config.start_part_index, node_index, i))
 
     end_time = time.time()
@@ -134,6 +148,13 @@ def run_multi_process(config):
     [p.join() for p in processes]  # 等待进程依次结束
 
 if __name__ == "__main__":
+    # tokenizer = AutoTokenizer.from_pretrained('../pretrained/chatglm3-6b-128k', trust_remote_code=True)
+    # print(tokenizer.vocab_size)
+    # question = 'Please help me write a one-sentence summary of the following {} code snippet.'
+    # print(tokenizer.tokenize(question))
+    # model = AutoModel.from_pretrained('../pretrained/chatglm3-6b-128k', trust_remote_code=True).half()
+    # print(model.config.seq_length)
+
     config = get_args()
     config.repo_path = config.repo_path + os.sep + config.lang
     run_multi_process(config)
