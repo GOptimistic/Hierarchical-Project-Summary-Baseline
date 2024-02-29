@@ -23,8 +23,8 @@ def get_args():
         """Get file summary of each project""")
 
     parser.add_argument("--node_num", type=int, default=2)
-    parser.add_argument("--split_data_num", type=int, default=16)
-    parser.add_argument("--data_part_size", type=int, default=2000)
+    parser.add_argument("--split_data_num", type=int, default=32)
+    parser.add_argument("--data_part_size", type=int, default=1000)
     parser.add_argument("--start_part_index", type=int, default=0)
     parser.add_argument("--model_path", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
     parser.add_argument("--lang", type=str, default="java")
@@ -143,6 +143,7 @@ def run_multi_process(config):
     for i in range(config.node_num):
         start_index = (config.start_part_index + i) * config.data_part_size
         end_index = (config.start_part_index + i + 1) * config.data_part_size
+        print('process {} start {} end {}'.format(i, start_index, end_index))
         if end_index > len(repos_and_summaries):
             end_index = len(repos_and_summaries)
         processes.append(Process(target=run_single_process, args=(config, repos_and_summaries[start_index:end_index], i,)))
@@ -158,5 +159,6 @@ if __name__ == "__main__":
     # print(model.config.seq_length)
 
     config = get_args()
+    print(config)
     config.repo_path = config.repo_path + os.sep + config.lang
     run_multi_process(config)
