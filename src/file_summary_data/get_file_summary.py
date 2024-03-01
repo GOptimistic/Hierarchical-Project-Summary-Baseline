@@ -2,6 +2,8 @@ import re
 from random import sample
 from transformers import AutoTokenizer, AutoModel
 import time
+import functools
+import signal
 import json
 import argparse
 from multiprocessing import Process
@@ -18,6 +20,33 @@ csv.field_size_limit(sys.maxsize)
 
 # TODO：对util这些类可以去除，减少噪声
 filterout_regex = 'util|test|docs'
+timeout_seconds = 300
+
+def timeout(sec):
+    """
+    timeout decorator
+    :param sec: function raise TimeoutError after ? seconds
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapped_func(*args, **kwargs):
+
+            def _handle_timeout(signum, frame):
+                err_msg = f'Function {func.__name__} timed out after {sec} seconds'
+                raise TimeoutError(err_msg)
+
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(sec)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wrapped_func
+    return decorator
+
+
 def get_args():
     parser = argparse.ArgumentParser(
         """Get file summary of each project""")
@@ -38,6 +67,7 @@ def get_args():
     return args
 
 
+@timeout(timeout_seconds)
 def get_single_project_file_summary(json_path, model, tokenizer, lang, max_length_package, max_length_file):
     sequence_max_length = model.config.seq_length
     with open(json_path, 'r', encoding='utf-8') as f:
@@ -109,17 +139,25 @@ def run_single_process(config, data_list, node_index):
                 if len(file_summaries.keys()) == 0:
                     continue
                 csv_witer.writerow([full_name, json.dumps(file_summaries), summary])
-            except RuntimeError as exception:
-                if "CUDA out of memory" in str(exception):
+            except RuntimeError as runtime_exception:
+                if "CUDA out of memory" in str(runtime_exception):
                     print("ERROR: out of memory. part {} node {} index {}".format(config.start_part_index, node_index, i))
                     if hasattr(torch.cuda, 'empty_cache'):
                         with torch.cuda.device(device):
                             torch.cuda.empty_cache()
                     continue
                 else:
-                    raise exception
+                    print(
+                        "Runtime ERROR: {}. part {} node {} index {}".format(str(runtime_exception), config.start_part_index, node_index, i))
+                    continue
+            except TimeoutError as timeout_exception:
+                print("Timeout ERROR: {}. part {} node {} index {}".format(str(timeout_exception), config.start_part_index, node_index, i))
+                continue
+            except Exception as e:
+                print("Unknown ERROR: {}. part {} node {} index {}".format(str(e), config.start_part_index, node_index, i))
+                continue
 
-            print('part {} node {} index {}'.format(config.start_part_index, node_index, i))
+            print('part {} node {} index {} done'.format(config.start_part_index, node_index, i))
 
     end_time = time.time()
     print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time))
