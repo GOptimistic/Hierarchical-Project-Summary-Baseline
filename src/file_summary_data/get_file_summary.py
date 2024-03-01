@@ -113,7 +113,8 @@ def run_single_process(config, data_list, node_index):
                 if "CUDA out of memory" in str(exception):
                     print("ERROR: out of memory. part {} node {} index {}".format(config.start_part_index, node_index, i))
                     if hasattr(torch.cuda, 'empty_cache'):
-                        torch.cuda.empty_cache()
+                        with torch.cuda.device(device):
+                            torch.cuda.empty_cache()
                     continue
                 else:
                     raise exception
