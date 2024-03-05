@@ -1,8 +1,8 @@
 import pandas as pd
 import glob
-
+from sklearn.model_selection import train_test_split
 # 设置包含CSV文件的目录路径
-csv_files_path = './file_data/*.csv'  # 请替换为你的CSV文件所在目录
+csv_files_path = './file_data_java_test/*.csv'  # 请替换为你的CSV文件所在目录
 
 # 使用glob找到所有的csv文件
 csv_files = glob.glob(csv_files_path)
@@ -18,8 +18,14 @@ for filename in csv_files:
 # 合并所有DataFrame
 combined_df = pd.concat(data_frames, ignore_index=True)
 
-# 将合并后的DataFrame保存到新的CSV文件
-combined_csv_path = './combined_csv.csv'  # 你可以更改这个文件名
-combined_df.to_csv(combined_csv_path, index=False)
+# 划分数据集
+train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
+print(len(train_df))
 
-print(f'All files have been combined into {combined_csv_path}')
+valid_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=56)
+print(len(valid_df))
+print(len(test_df))
+
+train_df.to_csv('./mini_train.csv', index=False)
+valid_df.to_csv('./mini_valid.csv', index=False)
+test_df.to_csv('./mini_test.csv', index=False)
