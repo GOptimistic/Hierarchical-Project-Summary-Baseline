@@ -13,12 +13,12 @@ class GruDecoder(nn.Module):
 
         # 预训练好的词嵌入模型
         if pretrained_model is None:
-            pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
-        pretrained_embedding = pretrained_model.embeddings.word_embeddings.weight.data
+            raise Exception('Pretrained_model is none!')
+        pretrained_embedding = pretrained_model.transformer.embeddings.word_embeddings.weight.data
         self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
         configuration = pretrained_model.config
 
-        self.vocab_size = configuration.vocab_size
+        self.vocab_size = configuration.padded_vocab_size
         self.embedding_dim = configuration.hidden_size
         self.attention = attention
         # self.embedding = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=self.embedding_dim,
@@ -32,7 +32,7 @@ class GruDecoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, s, enc_outputs):
-        # input = [batch size] 都是<BOS>
+        # input = [batch size] 一开始都是<BOS>
         # s = [num_layers, batch_size, hidden_size * 2]
         # enc_outputs = [batch_size, package_size, hidden_size * 2]
         # Decoder 是单向，所以 directions=1
@@ -41,14 +41,14 @@ class GruDecoder(nn.Module):
         embedded = self.dropout(self.embedding(input))
         # a = [batch_size, 1, package_size]
         a = self.attention(enc_outputs, s).unsqueeze(1)
-        # c = [batch_size, 1, hid_dim * 2]
+        # c = [batch_size, 1, hidden_size * 2]
         c = torch.bmm(a, enc_outputs)
         # rnn_input = [batch_size, 1, embedding_dim + hidden_size * 2]
         # print(embedded.shape)
         # print(c.shape)
         rnn_input = torch.cat((embedded, c), dim=2)
-        # dec_output = [batch_size, 1, hid_dim * 2]
-        # s = [num_layers, batch_size, hid_dim * 2]
+        # dec_output = [batch_size, 1, hidden_size * 2]
+        # s = [num_layers, batch_size, hidden_size * 2]
         dec_output, s = self.rnn(rnn_input, s)
 
         embedded = embedded.squeeze(1)

@@ -16,12 +16,12 @@ class TokenAttNet(nn.Module):
 
         # 预训练好的词嵌入模型
         if pretrained_model is None:
-            pretrained_model = AutoModel.from_pretrained('microsoft/codebert-base')
-        pretrained_embedding = pretrained_model.embeddings.word_embeddings.weight.data
+            raise Exception('Pretrained_model is none!')
+        pretrained_embedding = pretrained_model.transformer.embeddings.word_embeddings.weight.data
         self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
 
         configuration = pretrained_model.config
-        vocab_size = configuration.vocab_size
+        vocab_size = configuration.padded_vocab_size
         embedding_size = configuration.hidden_size
 
         self.n_layers = n_layers
@@ -30,8 +30,8 @@ class TokenAttNet(nn.Module):
         self.fc = nn.Linear(hidden_size * 2, hidden_size * 2)
         self.token_attention = NormalAttention(hidden_size)
 
-    def forward(self, token_input, token_valid_len):
-        # token_input:[batch_size, token_size] token_valid_len:[batch_size]
+    def forward(self, token_input):
+        # token_input:[batch_size, token_size]
         # use nn.embedding.from_pretrained 替换 embedding
         batch_size = token_input.shape[0]
         embedding = self.embedding(token_input)  # [batch_size, token_size, embeddding_size]
@@ -49,6 +49,6 @@ class TokenAttNet(nn.Module):
 
         # a = [batch_size, 1, token_size]
         a = self.token_attention(outputs, s).unsqueeze(1)
-        method_embedding = torch.bmm(a, outputs)
+        file_embedding = torch.bmm(a, outputs)
         # method_embedding [batch_size, 1, 2*hidden_size]
-        return method_embedding
+        return file_embedding
