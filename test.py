@@ -5,73 +5,114 @@ import argparse
 import csv
 import os
 import shutil
-
+from transformers import AutoTokenizer, AutoModel
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 from torch.utils.data import DataLoader
-
+from tqdm import tqdm
 from dataset import MyDataset
-from src.utils import get_evaluation
+from src.model.Summary_Two_Level import SummaryTwoLevel
+from src.utils import get_evaluation, computebleu
 
 
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model described in the paper: Hierarchical Attention Networks for Document Classification""")
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--data_path", type=str, default="data/test.csv")
-    parser.add_argument("--pre_trained_model", type=str, default="trained_models/whole_model_han")
-    parser.add_argument("--word2vec_path", type=str, default="data/glove.6B.50d.txt")
-    parser.add_argument("--output", type=str, default="predictions")
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--test_data_path", type=str, default="test.csv")
+    parser.add_argument("--pretrained_model", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
+    parser.add_argument("--token_hidden_size", type=int, default=128)
+    parser.add_argument("--method_hidden_size", type=int, default=128)
+    parser.add_argument("--file_hidden_size", type=int, default=128)
+    parser.add_argument("--package_hidden_size", type=int, default=128)
+    parser.add_argument("--output_path", type=str, default="predictions")
+    parser.add_argument("--max_package_length", type=int, default=5)
+    parser.add_argument("--max_file_length", type=int, default=5)
+    parser.add_argument("--max_method_length", type=int, default=5)
+    parser.add_argument("--max_token_length", type=int, default=50)
+    parser.add_argument("--max_summary_length", type=int, default=20)
+    parser.add_argument("--lang", type=str, default="java")
+    parser.add_argument("--checkpoint", type=int, default="-1")
+    parser.add_argument("--n_layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
     return args
 
 
 def test(opt):
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(123)
+    else:
+        torch.manual_seed(123)
+    tokenizer = AutoTokenizer.from_pretrained(opt.pretrained_model, trust_remote_code=True).tokenizer
+    pretrained_model = AutoModel.from_pretrained(opt.pretrained_model, trust_remote_code=True)
+    pad_token_id = tokenizer.pad_id
+
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
                    "drop_last": False}
-    if os.path.isdir(opt.output):
-        shutil.rmtree(opt.output)
-    os.makedirs(opt.output)
+    test_set = MyDataset(opt.test_data_path, opt.max_package_length, opt.max_file_length, opt.max_token_length,
+                          opt.max_summary_length, tokenizer)
+    test_generator = DataLoader(test_set, num_workers=opt.num_workers, **test_params)
+    if os.path.isdir(opt.output_path):
+        shutil.rmtree(opt.output_path)
+    os.makedirs(opt.output_path)
+    load_model_path = "./trained_models/java/checkpoint_{}.pkl".format(opt.checkpoint)  # 读取模型位置
+
     if torch.cuda.is_available():
-        model = torch.load(opt.pre_trained_model)
+        device = torch.device("cuda")
     else:
-        model = torch.load(opt.pre_trained_model, map_location=lambda storage, loc: storage)
-    test_set = MyDataset(opt.data_path, opt.word2vec_path, model.max_sent_length, model.max_word_length)
-    test_generator = DataLoader(test_set, **test_params)
-    if torch.cuda.is_available():
-        model.cuda()
+        device = torch.device("cpu")
+    model = SummaryTwoLevel(opt, pretrained_model, device)
+    model = model.to(device)
+    model.to(device)
+    checkpoint = torch.load(load_model_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+
     model.eval()
-    te_label_ls = []
-    te_pred_ls = []
-    for te_feature, te_label in test_generator:
-        num_sample = len(te_label)
-        if torch.cuda.is_available():
-            te_feature = te_feature.cuda()
-            te_label = te_label.cuda()
-        with torch.no_grad():
-            model._init_hidden_state(num_sample)
-            te_predictions = model(te_feature)
-            te_predictions = F.softmax(te_predictions)
-        te_label_ls.extend(te_label.clone().cpu())
-        te_pred_ls.append(te_predictions.clone().cpu())
-    te_pred = torch.cat(te_pred_ls, 0).numpy()
-    te_label = np.array(te_label_ls)
+    criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
+    # 测试模型
+    loss_test, bleu_test, acc_test = 0.0, 0.0, 0.0
+    n = 0
+    result = []
+    for te_file_summaries, te_repo_summary in tqdm(test_generator):
+        te_file_summaries = te_file_summaries.to(device)
+        te_repo_summary = te_repo_summary.to(device)
+        batch_size = te_repo_summary.size(0)
+        # print(batch_size)
+        outputs_test, preds_test = model.evaluation(te_file_summaries, te_repo_summary)
 
-    fieldnames = ['True label', 'Predicted label', 'Content']
-    with open(opt.output + os.sep + "predictions.csv", 'w') as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_NONNUMERIC)
-        writer.writeheader()
-        for i, j, k in zip(te_label, te_pred, test_set.texts):
-            writer.writerow(
-                {'True label': i + 1, 'Predicted label': np.argmax(j) + 1, 'Content': k})
+        # targets 的第一个 token 是 '<BOS>' 所以忽略
+        outputs_test = outputs_test[:, 1:].reshape(-1, outputs_test.size(2))
+        te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
+        loss = criterion(outputs_test, te_repo_summary)
+        loss_test += loss.item()
+        acc_test += torch.eq(outputs_test.argmax(1), te_repo_summary).float().mean().item()
 
-    test_metrics = get_evaluation(te_label, te_pred,
-                                  list_metrics=["accuracy", "loss", "confusion_matrix"])
-    print("Prediction:\nLoss: {} Accuracy: {} \nConfusion matrix: \n{}".format(test_metrics["loss"],
-                                                                               test_metrics["accuracy"],
-                                                                               test_metrics["confusion_matrix"]))
+        # 将预测结果转为文字
+        te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
+        preds_val_result = []
+        for pred in preds_test:
+            preds_val_result.append(tokenizer.decode(pred.int().tolist()))
+        targets_result = []
+        for tgt in te_repo_summary:
+            targets_result.append(tokenizer.decode(tgt.int().tolist()))
+
+        # 记录验证集结果
+        for pred, target in zip(preds_val_result, targets_result):
+            result.append((pred, target))
+        # 计算 Bleu Score
+        bleu_test += computebleu(preds_val_result, targets_result)
+        n += batch_size
+    loss_test = loss_test / len(test_generator)
+    bleu_test = bleu_test / n
+    print('test loss: {}, bleu_score: {}, acc: {}'.format(loss_test, bleu_test, acc_test))
+    # 储存结果
+    with open(opt.output_path + '/test_output.txt', 'w') as f:
+        for line in result:
+            print(line, file=f)
 
 
 if __name__ == "__main__":
