@@ -35,8 +35,8 @@ class TokenAttNet(nn.Module):
         # use nn.embedding.from_pretrained 替换 embedding
         batch_size = token_input.shape[0]
         embedding = self.embedding(token_input)  # [batch_size, token_size, embeddding_size]
-        print('token_input')
-        print(token_input)
+        # print('token_input')
+        # print(token_input)
         # outputs [batch_size, token_size, 2*hidden_size] hidden [2*n_layers, batch_size, hidden_size]
         outputs, hidden = self.rnn(self.dropout(embedding))
         # 因为 Encoder 是双向RNN，所以需要对同一层两个方向的 hidden state 进行拼接
