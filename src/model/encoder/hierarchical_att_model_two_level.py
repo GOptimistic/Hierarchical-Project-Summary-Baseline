@@ -42,8 +42,8 @@ class HierAttEncoderTwoLevel(nn.Module):
             file_embedding_list = torch.cat(file_embedding_list, 1)
             # package_embedding [batch_size, 1, 2*file_hidden_size]
             package_embedding = self.file_att_net(file_embedding_list)
-            print('package_embedding')
-            print(package_embedding)
+            # print('package_embedding')
+            # print(package_embedding)
             package_embedding_list.append(package_embedding)
         # 将package_embedding拼接送入package输入
         package_embedding_list = torch.cat(package_embedding_list, 1)
