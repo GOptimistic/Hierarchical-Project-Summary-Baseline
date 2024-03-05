@@ -43,12 +43,17 @@ class TokenAttNet(nn.Module):
         # s = [num_layers, batch size, hidden_size * 2]
         s = torch.cat((hidden[:, -2, :, :], hidden[:, -1, :, :]), dim=2)
         s = torch.tanh(self.fc(s))
-
+        print('s')
+        print(s)
         # outputs [batch_size, token_size, 2*hidden_size]
         # s = [num_layers, batch size, hidden_size * 2]
 
         # a = [batch_size, 1, token_size]
         a = self.token_attention(outputs, s).unsqueeze(1)
+        print('a')
+        print(a)
         file_embedding = torch.bmm(a, outputs)
+        print('file_embedding')
+        print(file_embedding)
         # method_embedding [batch_size, 1, 2*hidden_size]
         return file_embedding
