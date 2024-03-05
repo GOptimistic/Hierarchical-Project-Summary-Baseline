@@ -44,11 +44,11 @@ class TokenAttNet(nn.Module):
         hidden = hidden.view(self.n_layers, 2, batch_size, -1)
         # s = [num_layers, batch size, hidden_size * 2]
         s = torch.cat((hidden[:, -2, :, :], hidden[:, -1, :, :]), dim=2)
-        print('before s')
-        print(s)
-        s = torch.tanh(self.fc(s))
-        print('after s')
-        print(s)
+        # print('before s')
+        # print(s)
+        # s = torch.tanh(self.fc(s))
+        # print('after s')
+        # print(s)
         # # outputs [batch_size, token_size, 2*hidden_size]
         # # s = [num_layers, batch size, hidden_size * 2]
         #

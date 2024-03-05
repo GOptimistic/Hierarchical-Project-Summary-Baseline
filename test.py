@@ -34,8 +34,8 @@ def get_args():
     parser.add_argument("--max_summary_length", type=int, default=20)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
-    parser.add_argument("--n_layers", type=int, default=2)
-    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--n_layers", type=int, default=1)
+    parser.add_argument("--dropout", type=float, default=0)
     parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
     return args

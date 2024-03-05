@@ -30,7 +30,7 @@ class FileAttNet(nn.Module):
         hidden = hidden.view(self.n_layers, 2, batch_size, -1)
         # s = [num_layers, batch_size, file_hidden_size * 2]
         s = torch.cat((hidden[:, -2, :, :], hidden[:, -1, :, :]), dim=2)
-        s = torch.tanh(self.fc(s))
+        # s = torch.tanh(self.fc(s))
 
         # outputs [batch_size, file_size, 2*file_hidden_size]
         # s = [num_layers, batch_size, file_hidden_size * 2]
