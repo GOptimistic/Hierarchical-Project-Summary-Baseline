@@ -24,7 +24,7 @@ def get_args():
         """Implementation of the model: Hierarchical Project Summary Baseline""")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_epoches", type=int, default=100)
-    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--token_hidden_size", type=int, default=128)
     parser.add_argument("--method_hidden_size", type=int, default=128)
@@ -171,7 +171,7 @@ def train(opt):
                 accuracy))
             writer.add_scalar('Train/Loss', loss, epoch * num_iter_per_epoch + iter_index)
             writer.add_scalar('Train/Accuracy', accuracy, epoch * num_iter_per_epoch + iter_index)
-            train_losses.append(loss)
+            train_losses.append(loss.item())
         if (epoch + 1) % opt.valid_interval == 0:
             with torch.no_grad():
                 model.eval()
@@ -196,10 +196,10 @@ def train(opt):
                     te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
                     preds_val_result = []
                     for pred in preds_val:
-                        preds_val_result.append(tokenizer.decode(pred))
+                        preds_val_result.append(tokenizer.decode(pred.int().tolist()))
                     targets_result = []
                     for tgt in te_repo_summary:
-                        targets_result.append(tokenizer.decode(tgt))
+                        targets_result.append(tokenizer.decode(tgt.int().tolist()))
 
                     # 记录验证集结果
                     for pred, target in zip(preds_val_result, targets_result):
