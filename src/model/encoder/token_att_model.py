@@ -47,8 +47,8 @@ class TokenAttNet(nn.Module):
         # print('before s')
         # print(s)
         # s = torch.tanh(self.fc(s))
-        # print('after s')
-        # print(s)
+        print('after s')
+        print(s)
         # # outputs [batch_size, token_size, 2*hidden_size]
         # # s = [num_layers, batch size, hidden_size * 2]
         #

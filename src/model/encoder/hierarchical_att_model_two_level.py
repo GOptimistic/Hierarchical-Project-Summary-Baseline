@@ -34,16 +34,16 @@ class HierAttEncoderTwoLevel(nn.Module):
                 # print('token_input')
                 # print(token_input)
                 file_embedding = self.token_att_net(token_input)
-                print('file_embedding')
-                print(file_embedding)
+                # print('file_embedding')
+                # print(file_embedding)
                 # file_embedding [batch_size, 1, 2*token_hidden_size]
                 file_embedding_list.append(file_embedding)
             # 将file_embedding拼接送入file层输入
             file_embedding_list = torch.cat(file_embedding_list, 1)
             # package_embedding [batch_size, 1, 2*file_hidden_size]
             package_embedding = self.file_att_net(file_embedding_list)
-            print('package_embedding')
-            print(package_embedding)
+            # print('package_embedding')
+            # print(package_embedding)
             package_embedding_list.append(package_embedding)
         # 将package_embedding拼接送入package输入
         package_embedding_list = torch.cat(package_embedding_list, 1)
