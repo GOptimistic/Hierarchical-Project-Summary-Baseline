@@ -5,6 +5,7 @@ src/data
 src/pretrained
 logs/
 trained_models/
+trained_models_bak/
 logs_three/
 trained_models_three_level/
 *.log

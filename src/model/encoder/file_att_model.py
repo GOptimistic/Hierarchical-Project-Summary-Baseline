@@ -18,7 +18,7 @@ class FileAttNet(nn.Module):
                           bidirectional=True)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(file_hidden_size * 2, file_hidden_size * 2)
-        self.file_attention = NormalAttention(file_hidden_size)
+        # self.file_attention = NormalAttention(file_hidden_size)
 
     def forward(self, file_input):
         # file_input: [batch_size, file_size, 2*token_hidden_size]
@@ -36,10 +36,12 @@ class FileAttNet(nn.Module):
         # s = [num_layers, batch_size, file_hidden_size * 2]
 
         # a = [batch_size, 1, file_size]
-        a = self.file_attention(outputs, s).unsqueeze(1)
-        package_embedding = torch.bmm(a, outputs)
-        # package_embedding [batch_size, 1, 2*file_hidden_size]
-        return package_embedding
+        # a = self.file_attention(outputs, s).unsqueeze(1)
+        # package_embedding = torch.bmm(a, outputs)
+        # # package_embedding [batch_size, 1, 2*file_hidden_size]
+        # return package_embedding
+        s = torch.mean(s, 0).permute(1, 0, 2)
+        return s
 
 
 if __name__ == "__main__":
