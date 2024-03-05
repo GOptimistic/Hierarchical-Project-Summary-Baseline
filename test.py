@@ -83,7 +83,7 @@ def test(opt):
         batch_size = te_repo_summary.size(0)
         # print(batch_size)
         outputs_test, preds_test = model.evaluation(te_file_summaries, te_repo_summary)
-        print(preds_test)
+        # print(preds_test)
         # targets 的第一个 token 是 '<BOS>' 所以忽略
         outputs_test = outputs_test[:, 1:].reshape(-1, outputs_test.size(2))
         te_repo_summary = te_repo_summary[:, 1:].reshape(-1)

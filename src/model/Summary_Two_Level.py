@@ -61,7 +61,10 @@ class SummaryTwoLevel(nn.Module):
         outputs = torch.zeros(batch_size, target_len, vocab_size).to(self.device)
         # encoder_outputs用来计算attention，s 用来初始化 Decoder
         encoder_outputs, s = self.encoder(file_summaryies)
-
+        print('encoder_outputs')
+        print(encoder_outputs)
+        print('s')
+        print(s)
         decoder_input = repo_summary[:, 0]  # [bos_id * batch_size]
         preds = []
         for t in range(1, target_len):
