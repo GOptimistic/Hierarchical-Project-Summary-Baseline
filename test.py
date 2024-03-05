@@ -83,7 +83,7 @@ def test(opt):
         batch_size = te_repo_summary.size(0)
         # print(batch_size)
         outputs_test, preds_test = model.evaluation(te_file_summaries, te_repo_summary)
-
+        print(preds_test)
         # targets 的第一个 token 是 '<BOS>' 所以忽略
         outputs_test = outputs_test[:, 1:].reshape(-1, outputs_test.size(2))
         te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
@@ -107,6 +107,7 @@ def test(opt):
         bleu_test += computebleu(preds_val_result, targets_result)
         n += batch_size
     loss_test = loss_test / len(test_generator)
+    acc_test = acc_test / len(test_generator)
     bleu_test = bleu_test / n
     print('test loss: {}, bleu_score: {}, acc: {}'.format(loss_test, bleu_test, acc_test))
     # 储存结果
