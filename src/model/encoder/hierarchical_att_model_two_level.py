@@ -31,6 +31,8 @@ class HierAttEncoderTwoLevel(nn.Module):
             file_embedding_list = []
             for token_input in file_input:
                 # token_input[batch_size, token_size]
+                print('token_input')
+                print(token_input)
                 file_embedding = self.token_att_net(token_input)
                 print('file_embedding')
                 print(file_embedding)
