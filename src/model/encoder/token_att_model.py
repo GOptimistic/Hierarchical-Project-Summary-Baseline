@@ -56,5 +56,5 @@ class TokenAttNet(nn.Module):
         # print('file_embedding')
         # print(file_embedding)
         # method_embedding [batch_size, 1, 2*hidden_size]
-        s = torch.mean(s, 0).permute(1, 0, 2)
+        s = torch.mean(s, 0).unsqueeze(0).permute(1, 0, 2)
         return s

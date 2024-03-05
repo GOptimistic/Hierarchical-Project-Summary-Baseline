@@ -40,7 +40,7 @@ class FileAttNet(nn.Module):
         # package_embedding = torch.bmm(a, outputs)
         # # package_embedding [batch_size, 1, 2*file_hidden_size]
         # return package_embedding
-        s = torch.mean(s, 0).permute(1, 0, 2)
+        s = torch.mean(s, 0).unsqueeze(0).permute(1, 0, 2)
         return s
 
 
