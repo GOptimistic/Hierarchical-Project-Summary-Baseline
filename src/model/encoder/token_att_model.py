@@ -17,7 +17,7 @@ class TokenAttNet(nn.Module):
         # 预训练好的词嵌入模型
         if pretrained_model is None:
             raise Exception('Pretrained_model is none!')
-        pretrained_embedding = pretrained_model.transformer.embeddings.word_embeddings.weight.data
+        pretrained_embedding = pretrained_model.transformer.embedding.word_embeddings.weight.data
         self.embedding = nn.Embedding.from_pretrained(pretrained_embedding, freeze=True)
 
         configuration = pretrained_model.config

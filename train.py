@@ -48,7 +48,7 @@ def get_args():
     parser.add_argument("--max_summary_length", type=int, default=20)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
-    parser.add_argument("--n_layers", type=int, default=1)
+    parser.add_argument("--n_layers", type=int, default=2)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
@@ -78,7 +78,7 @@ def train(opt):
 
     # 用于将生成的id转换成text
     tokenizer = AutoTokenizer.from_pretrained(opt.pretrained_model, trust_remote_code=True).tokenizer
-    pretrained_model = AutoModel.from_pretrained(opt.pretrained_model, trust_remote_code=True).half()
+    pretrained_model = AutoModel.from_pretrained(opt.pretrained_model, trust_remote_code=True)
     pad_token_id = tokenizer.pad_id
 
     print("Model's parameters: {}".format(vars(opt)))
@@ -106,8 +106,8 @@ def train(opt):
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
     infoSummary(model,
-                [(opt.batch_size, opt.max_length_package, opt.max_length_file, opt.max_length_token),
-                 (opt.batch_size, opt.max_length_summary),
+                [(opt.batch_size, opt.max_package_length, opt.max_file_length, opt.max_token_length),
+                 (opt.batch_size, opt.max_summary_length),
                  (1,)],
                 dtypes=[torch.long, torch.long, torch.float])
     if os.path.isdir(opt.log_path):

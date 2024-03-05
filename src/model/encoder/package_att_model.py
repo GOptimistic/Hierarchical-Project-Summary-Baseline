@@ -17,7 +17,7 @@ class PackageAttNet(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(package_hidden_size * 2, package_hidden_size * 2)
 
-    def forward(self, package_input, package_valid_len):
+    def forward(self, package_input):
         # package_input: [batch_size, package_size, 2*file_hidden_size]
         # package_valid_len: [batch_size]
         batch_size = package_input.shape[0]
