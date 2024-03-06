@@ -111,9 +111,10 @@ def test(opt):
     bleu_test = bleu_test / n
     print('test loss: {}, bleu_score: {}, acc: {}'.format(loss_test, bleu_test, acc_test))
     # 储存结果
-    with open(opt.output_path + '/test_output.txt', 'w') as f:
+    with open(opt.output_path + '/test_pred.txt', 'w') as p, open(opt.output_path + '/test_tgt.txt', 'w') as t:
         for line in result:
-            print(line, file=f)
+            print(line[0], file=p)
+            print(line[1], file=t)
 
 
 if __name__ == "__main__":
