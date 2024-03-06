@@ -44,6 +44,6 @@ EOS_IDX = vocab2id[TEXT.eos_token]
 # train_iter 自动shuffle, val_iter 按照sort_key排序
 train_iter, val_iter = data.BucketIterator.splits(
     (train, val),
-    batch_sizes=(32, 32),
-    sort_key=lambda x: len(x.src),
+    batch_sizes=(64, 64),
+    sort_key=lambda x: len(x.repo_summary),
     device=device)
