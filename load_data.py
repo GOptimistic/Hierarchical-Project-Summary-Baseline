@@ -8,7 +8,6 @@ import csv
 from nltk import word_tokenize
 import torch
 from torchtext.legacy import data
-from torchtext.vocab import GloVe
 
 device = "cuda" if torch.cuda.is_available() else 'cpu'
 
@@ -25,18 +24,18 @@ TEXT = data.Field(tokenize=tokenizer,
                   batch_first=True)
 
 train, val = data.TabularDataset.splits(
-    path='./src/file_summary_data/',
+    path='./data/',
     train='mini_train_one_level.csv',
     validation='mini_valid_one_level.csv',
     format='csv',
     skip_header=True,
     fields=[('file_summaries', TEXT), ('repo_summary', TEXT)])
 
-TEXT.build_vocab(train, min_freq=2, vectors=GloVe(name='6B', dim=300))
+TEXT.build_vocab(train, min_freq=2)
 id2vocab = TEXT.vocab.itos
 vocab2id = TEXT.vocab.stoi
 print(len(TEXT.vocab.stoi))
-print(TEXT.vocab.stoi[:100])
+print(TEXT.vocab.itos[:100])
 PAD_IDX = vocab2id[TEXT.pad_token]
 UNK_IDX = vocab2id[TEXT.unk_token]
 SOS_IDX = vocab2id[TEXT.init_token]
