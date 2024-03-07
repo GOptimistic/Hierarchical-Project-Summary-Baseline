@@ -12,14 +12,12 @@ from tqdm import tqdm
 import json
 from transformers import AutoTokenizer
 
-from tokenizer import MyTokenizer
-
 csv.field_size_limit(sys.maxsize)
 
 
-class MyDataset(Dataset):
+class Seq2SeqDataset(Dataset):
 
-    def __init__(self, csv_data_path, max_package_length, max_file_length, max_token_length, max_summary_length,
+    def __init__(self, csv_data_path, max_token_length, max_summary_length,
                  tokenizer):
         super(MyDataset, self).__init__()
 
@@ -28,9 +26,9 @@ class MyDataset(Dataset):
         self.max_token_length = max_token_length
         self.max_summary_length = max_summary_length
         self.tokenizer = tokenizer
-        self.sos_id = self.tokenizer.sos_index
-        self.eos_id = self.tokenizer.eos_index
-        self.pad_id = self.tokenizer.pad_index
+        self.bos_id = self.tokenizer.bos_id
+        self.eos_id = self.tokenizer.eos_id
+        self.pad_id = self.tokenizer.pad_id
 
         self.data_list = []
         with open(csv_data_path) as csv_file:
@@ -38,23 +36,32 @@ class MyDataset(Dataset):
             for idx, row in enumerate(reader):
                 if idx == 0:
                     continue
-                file_summaries_object = json.loads(row[0])
-                repo_summary = row[1]
-                self.data_list.append((file_summaries_object, repo_summary))
+                repo_name = row[0].split('/')[1]
+                file_summaries_object = json.loads(row[1])
+                repo_summary = row[2]
+                self.data_list.append((repo_name, file_summaries_object, repo_summary))
 
     def __len__(self):
         return len(self.data_list)
 
     def __getitem__(self, index):
-        file_summaries_object, repo_summary = self.data_list[index]
+        repo_name, file_summaries_object, repo_summary = self.data_list[index]
         file_summaries_list = []
         for package in file_summaries_object.keys():
             package_info = file_summaries_object[package]
             package_file_list = []
             for file in package_info.keys():
                 file_summary = package_info[file]
+                # 加上package和file的信息
+                file_summary = 'Repo {}. Package {}. File {}. '.format(repo_name, package, file) + file_summary
                 # pad应补充在eos的后面
-                encode_ids = self.tokenizer.encode(file_summary, self.max_token_length)
+                encode_ids = self.tokenizer.encode(file_summary, True, True)
+                if len(encode_ids) > self.max_token_length:
+                    encode_ids = encode_ids[:self.max_token_length - 1]
+                    encode_ids = encode_ids + [self.eos_id]
+                else:
+                    extended_words = [self.pad_id for _ in range(self.max_token_length - len(encode_ids))]
+                    encode_ids.extend(extended_words)
                 package_file_list.append(encode_ids)
             if len(package_file_list) > self.max_file_length:
                 package_file_list = package_file_list[:self.max_file_length]
@@ -72,14 +79,21 @@ class MyDataset(Dataset):
             file_summaries_list.extend(extended_packages)
 
         # 处理summary
-        repo_summary = self.tokenizer.encode(repo_summary, self.max_summary_length)
+        repo_summary = self.tokenizer.encode(repo_summary, True, True)
+        if len(repo_summary) > self.max_summary_length:
+            repo_summary = repo_summary[:self.max_summary_length - 1]
+            repo_summary = repo_summary + [self.eos_id]
+        else:
+            extended_words = [self.pad_id for _ in range(self.max_summary_length - len(repo_summary))]
+            repo_summary.extend(extended_words)
 
         return np.array(file_summaries_list), np.array(repo_summary)
 
 
 if __name__ == '__main__':
-    tokenizer = MyTokenizer('/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/w2v_vocab.json')
-    test = MyDataset('/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/file_summary_data/mini_all.csv', 5, 5, 100, 30, tokenizer)
+    model_path = '/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/pretrained/chatglm3-6b-128k'
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    test = MyDataset('/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/file_summary_data/combined_csv.csv', 5, 5, 100, 30, tokenizer.tokenizer)
     print(test.__getitem__(index=1))
 
     training_params = {"batch_size": 16,

@@ -18,6 +18,8 @@ import numpy as np
 from tqdm import tqdm
 from torchinfo import summary as infoSummary
 
+from tokenizer import MyTokenizer
+
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -26,10 +28,11 @@ def get_args():
     parser.add_argument("--num_epoches", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument("--token_hidden_size", type=int, default=128)
-    parser.add_argument("--method_hidden_size", type=int, default=128)
-    parser.add_argument("--file_hidden_size", type=int, default=128)
-    parser.add_argument("--package_hidden_size", type=int, default=128)
+    parser.add_argument("--embedding_size", type=int, default=128)
+    parser.add_argument("--token_hidden_size", type=int, default=256)
+    parser.add_argument("--file_hidden_size", type=int, default=256)
+    parser.add_argument("--package_hidden_size", type=int, default=256)
+    parser.add_argument("--decoder_hidden_size", type=int, default=256)
     parser.add_argument("--es_min_delta", type=float, default=0.0,
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
@@ -37,19 +40,19 @@ def get_args():
     parser.add_argument("--train_data_path", type=str, default="train.csv")
     parser.add_argument("--valid_data_path", type=str, default="valid.csv")
     parser.add_argument("--valid_interval", type=int, default=1, help="Number of epoches between testing phases")
-    parser.add_argument("--pretrained_model", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
+    parser.add_argument("--vocab_file", type=str, default="./w2v_vocab.json")
     parser.add_argument("--log_path", type=str, default="./logs")
     parser.add_argument("--saved_path", type=str, default="./trained_models")
     # parser.add_argument("--repo_base_path", type=str, default="./data")
     parser.add_argument("--max_package_length", type=int, default=5)
     parser.add_argument("--max_file_length", type=int, default=5)
     parser.add_argument("--max_method_length", type=int, default=5)
-    parser.add_argument("--max_token_length", type=int, default=50)
-    parser.add_argument("--max_summary_length", type=int, default=20)
+    parser.add_argument("--max_token_length", type=int, default=100)
+    parser.add_argument("--max_summary_length", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
     parser.add_argument("--n_layers", type=int, default=1)
-    parser.add_argument("--dropout", type=float, default=0)
+    parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
     return args
@@ -77,9 +80,9 @@ def train(opt):
         os.mkdir(bleu_path)
 
     # 用于将生成的id转换成text
-    tokenizer = AutoTokenizer.from_pretrained(opt.pretrained_model, trust_remote_code=True).tokenizer
-    pretrained_model = AutoModel.from_pretrained(opt.pretrained_model, trust_remote_code=True)
-    pad_token_id = tokenizer.pad_id
+    tokenizer = MyTokenizer(opt.vocab_file)
+    print(len(tokenizer.vocab))
+    pad_token_id = tokenizer.pad_index
 
     print("Model's parameters: {}".format(vars(opt)))
     training_params = {"batch_size": opt.batch_size,
@@ -100,7 +103,7 @@ def train(opt):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    model = SummaryTwoLevel(opt, pretrained_model, device)
+    model = SummaryTwoLevel(opt, pad_token_id, device)
     model = model.to(device)
     total_params, trainable_params = count_parameters(model)
     print(f"Total parameters: {total_params}")
@@ -176,7 +179,7 @@ def train(opt):
             with torch.no_grad():
                 model.eval()
 
-                loss_val, bleu_val, acc_val = 0.0, 0.0, 0.0
+                loss_val, bleu_val, acc_val = 0.0, 0.0, 0
                 n = 0
                 result_val = []
                 for te_file_summaries, te_repo_summary in tqdm(valid_generator):
@@ -190,10 +193,10 @@ def train(opt):
                     te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
                     loss = criterion(outputs_val, te_repo_summary)
                     loss_val += loss.item()
-                    acc_val += torch.eq(outputs_val.argmax(1), te_repo_summary).float().mean().item()
+                    acc_val += torch.eq(outputs_val.argmax(1), te_repo_summary).float().mean().item() * batch_size
 
                     # 将预测结果转为文字
-                    te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
+                    te_repo_summary = te_repo_summary.view(batch_size, -1)
                     preds_val_result = []
                     for pred in preds_val:
                         preds_val_result.append(tokenizer.decode(pred.int().tolist()))
@@ -203,12 +206,12 @@ def train(opt):
 
                     # 记录验证集结果
                     for pred, target in zip(preds_val_result, targets_result):
+                        # 计算 Bleu Score
+                        bleu_val += computebleu(pred, target)
                         result_val.append((pred, target))
-                    # 计算 Bleu Score
-                    bleu_val += computebleu(preds_val_result, targets_result)
                     n += batch_size
                 loss_val = loss_val / len(valid_generator)
-                acc_val = acc_val / len(valid_generator)
+                acc_val = acc_val / n
                 bleu_val = bleu_val / n
                 val_losses.append(loss_val)
                 val_bleu_scores.append(bleu_val)

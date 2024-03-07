@@ -13,14 +13,14 @@ from src.model.encoder.package_att_model import PackageAttNet
 
 
 class HierAttEncoderTwoLevel(nn.Module):
-    def __init__(self, token_hidden_size, file_hidden_size, package_hidden_size,
-                 pretrained_model, n_layers, dropout):
+    def __init__(self, token_hidden_size, file_hidden_size, package_hidden_size, decoder_hidden_size,
+                 embedding_size, dropout, vocab_size, pad_id):
         super(HierAttEncoderTwoLevel, self).__init__()
 
-        self.token_att_net = TokenAttNet(token_hidden_size, pretrained_model, n_layers, dropout)
+        self.token_att_net = TokenAttNet(vocab_size, token_hidden_size, embedding_size, dropout, pad_id)
 
-        self.file_att_net = FileAttNet(file_hidden_size, token_hidden_size, n_layers, dropout)
-        self.package_att_net = PackageAttNet(package_hidden_size, file_hidden_size, n_layers, dropout)
+        self.file_att_net = FileAttNet(file_hidden_size, token_hidden_size, dropout)
+        self.package_att_net = PackageAttNet(package_hidden_size, file_hidden_size, decoder_hidden_size, dropout)
 
     def forward(self, file_summaryies):
         # file_summaryies (batch_size, package_size, file_size, token_size)
@@ -50,7 +50,7 @@ class HierAttEncoderTwoLevel(nn.Module):
         package_outputs, package_hidden = self.package_att_net(package_embedding_list)
 
         # package_outputs [batch_size, package_size, 2*package_hidden_size]
-        # package_hidden = [num_layers, batch_size, package_hidden_size * 2]
+        # package_hidden = [batch_size, decoder_hidden_size]
         return package_outputs, package_hidden
 
 

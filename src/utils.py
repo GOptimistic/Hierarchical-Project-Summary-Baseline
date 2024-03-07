@@ -102,24 +102,8 @@ def schedule_sampling(step, summary_steps, c, k):
     return e
 
 
-def computebleu(sentences, targets):
-    score = 0
-    assert (len(sentences) == len(targets))
-
-    def cut_token(sentence):
-        tmp = []
-        for token in sentence:
-            if token == '<unk>' or token.isdigit() or len(bytes(token[0], encoding='utf-8')) == 1:
-                tmp.append(token)
-            else:
-                tmp += [word for word in token]
-        return tmp
-
-    for sentence, target in zip(sentences, targets):
-        sentence = cut_token(sentence)
-        target = cut_token(target)
-        score += sentence_bleu([target], sentence, weights=(0.25, 0.25, 0.25, 0.25))
-    return score
+def computebleu(pred, target):
+    return sentence_bleu([target.split()], pred.split(), weights=(0.25, 0.25, 0.25, 0.25))
 
 if __name__ == "__main__":
     word, sent = get_max_lengths("../data/test.csv")

@@ -4,7 +4,36 @@ import json
 from sklearn.model_selection import train_test_split
 import re
 import inflect
-import nltk.stem.porter as pt
+from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.corpus import wordnet
+from nltk import word_tokenize, pos_tag
+from nltk.stem.porter import PorterStemmer
+import numpy as np
+
+lemmatizer = WordNetLemmatizer()
+porter_stemmer = PorterStemmer()
+file_summary_length = []
+
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return None
+
+
+def lemmatize_sentence(sentence):
+    res = []
+    for word, pos in pos_tag(word_tokenize(sentence)):
+        wordnet_pos = get_wordnet_pos(pos) or wordnet.NOUN
+        res.append(lemmatizer.lemmatize(word, pos=wordnet_pos))
+
+    return res
 
 
 def to_digit(digit):
@@ -22,6 +51,8 @@ def process_token(str):
     str = str.replace("&", "and")
     # 去掉非数字字母空格符号，比如标点
     str = re.sub(r'[^\w\s]', ' ', str)
+    # 处理下划线
+    str = str.replace('_', ' ')
     # 处理驼峰命名的词，切分成多个单词
     str = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', str)
     tokens = str.split()
@@ -29,33 +60,62 @@ def process_token(str):
     tokens = [to_digit(x) for x in tokens]
     # 转化为小写
     tokens = [x.lower() for x in tokens]
-    # 词干提取
-    # 波特词干提取器
-    # stemmer = pt.PorterStemmer()
-    # tokens = [stemmer.stem(x) for x in tokens]
+    # # 词性还原
+    sentence = ' '.join(tokens)
+    tokens = lemmatize_sentence(sentence)
+    # # 词干提取
+    # tokens = [porter_stemmer.stem(x) for x in tokens]
 
     return ' '.join(tokens)
 
 
 # 处理文件摘要
 def handle_file_summaries(repo_name, file_summaries):
+    global file_summary_length
     repo_name = repo_name.split('/')[1]
     file_summaries_object = json.loads(file_summaries)
 
-    file_summaries_result = 'project {} '.format(repo_name)
     for package in file_summaries_object.keys():
         package_info = file_summaries_object[package]
-        file_summaries_result += 'package {} '.format(package)
         for file in package_info.keys():
             file_summary = package_info[file]
             # 加上package和file的信息
-            file_summaries_result += 'file {} summary {} '.format(file, file_summary)
-    return process_token(file_summaries_result)
+            file_summary = 'project {} package {} file {} summary {} '.format(repo_name, package, file, file_summary)
+            package_info[file] = process_token(file_summary)
+            file_summary_length.append(len(package_info[file]))
+        file_summaries_object[package] = package_info
+    return json.dumps(file_summaries_object)
+
 
 # 处理summary
 def handle_repo_summary(repo_summary):
     return process_token(repo_summary)
 
+
+def print_data_status(data):
+    mean_value = np.mean(data)
+    median_value = np.median(data)
+    counts = np.bincount(data)
+    sum_counts = np.sum(counts)
+    first_mode = np.argmax(counts)
+    first_mode_num = counts[first_mode]
+    counts[first_mode] = 0  # 将众数的计数置为0
+    second_mode = np.argmax(counts)
+    second_mode_num = counts[second_mode]
+    counts[second_mode] = 0  # 将第二众数的计数置为0
+    third_mode = np.argmax(counts)
+    third_mode_num = counts[third_mode]
+    q8 = np.percentile(data, 80)
+    q9 = np.percentile(data, 90)
+
+    print("平均数:", mean_value)
+    print("中位数:", median_value)
+    print("众数:", first_mode, " 频数为:", first_mode_num, " 比例为:", first_mode_num / sum_counts * 1.0)
+    print("第二众数:", second_mode, " 频数为:", second_mode_num, " 比例为:", second_mode_num / sum_counts * 1.0)
+    print("第三众数:", third_mode, " 频数为:", third_mode_num, " 比例为:", third_mode_num / sum_counts * 1.0)
+    print("最大值:", len(counts) - 1)
+    print("80%分位数:", q8)
+    print("90%分位数:", q9)
 
 def handle_csv():
     # 设置包含CSV文件的目录路径
@@ -66,7 +126,6 @@ def handle_csv():
 
     # 创建一个空列表来存储每个文件的DataFrame
     data_frames = []
-
     # 逐个读取CSV文件
     for filename in csv_files:
         df = pd.read_csv(filename, header=0)
@@ -78,7 +137,8 @@ def handle_csv():
 
     # 合并所有DataFrame
     combined_df = pd.concat(data_frames, ignore_index=True)
-    # combined_df.to_csv('./all.csv', index=False)
+    combined_df = combined_df.drop('repo_name', axis=1)
+    combined_df.to_csv('./mini_all.csv', index=False)
     # print(combined_df)
     # 划分数据集
     train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
@@ -97,3 +157,6 @@ if __name__ == '__main__':
     # repo_name = 'tony19/logback-android'
     # print(handle_file_summaries(repo_name, file_summary))
     handle_csv()
+    # 打印信息
+    print('###### File summary level')
+    print_data_status(file_summary_length)

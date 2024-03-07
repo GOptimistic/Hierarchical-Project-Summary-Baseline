@@ -53,10 +53,10 @@ class Attention(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_dim, emb_dim, enc_hid_dim, dec_hid_dim, dropout, attention):
+    def __init__(self, output_dim, emb_dim, enc_hid_dim, dec_hid_dim, dropout):
         super().__init__()
         self.output_dim = output_dim
-        self.attention = attention
+        self.attention = Attention(enc_hid_dim, dec_hid_dim)
         self.embedding = nn.Embedding(output_dim, emb_dim)
         self.rnn = nn.GRU((enc_hid_dim * 2) + emb_dim, dec_hid_dim, batch_first=True)
         self.fc_out = nn.Linear((enc_hid_dim * 2) + dec_hid_dim + emb_dim, output_dim)
@@ -93,10 +93,10 @@ class Decoder(nn.Module):
 
 
 class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder, device):
+    def __init__(self, vacab_size, emb_dim, enc_hid_dim, dec_hid_dim, dropout, device):
         super().__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = Encoder(vacab_size, emb_dim, enc_hid_dim, dec_hid_dim, dropout)
+        self.decoder = Decoder(vacab_size, emb_dim, enc_hid_dim, dec_hid_dim, dropout)
         self.device = device
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
@@ -152,7 +152,7 @@ class Seq2Seq(nn.Module):
         encoder_outputs, hidden = self.encoder(src)
 
         # first inputs to the decoder is the <sos> tokens
-        inputs = torch.tensor([SOS_IDX]).to(self.device)
+        inputs = torch.tensor([SOS_IDX] * batch_size).to(self.device)
 
         for t in range(1, max_length):
             # insert inputs token embedding, previous hidden state and all encoder hidden states

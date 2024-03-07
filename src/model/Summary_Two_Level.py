@@ -8,19 +8,22 @@ from src.model.encoder.hierarchical_att_model_two_level import HierAttEncoderTwo
 
 
 class SummaryTwoLevel(nn.Module):
-    def __init__(self, opt, pretrained_model, device):
+    def __init__(self, opt, pad_id, device):
         super(SummaryTwoLevel, self).__init__()
         self.encoder = HierAttEncoderTwoLevel(opt.token_hidden_size,
-                                      opt.file_hidden_size,
-                                      opt.package_hidden_size,
-                                      pretrained_model,
-                                      opt.n_layers,
-                                      opt.dropout)
-        self.attention = NormalAttention(opt.package_hidden_size)
+                                              opt.file_hidden_size,
+                                              opt.package_hidden_size,
+                                              opt.decoder_hidden_size,
+                                              opt.embedding_size,
+                                              opt.dropout,
+                                              opt.vocab_size,
+                                              pad_id)
         self.decoder = GruDecoder(opt.package_hidden_size,
-                                  opt.n_layers, opt.dropout,
-                                  self.attention,
-                                  pretrained_model)
+                                  opt.decoder_hidden_size,
+                                  opt.dropout,
+                                  opt.embedding_size,
+                                  opt.vocab_size,
+                                  pad_id)
         self.device = device
 
     def forward(self, file_summaryies, repo_summary, teacher_forcing_ratio):
@@ -40,13 +43,13 @@ class SummaryTwoLevel(nn.Module):
         preds = []
         for t in range(1, target_len):
             output, s = self.decoder(decoder_input, s, encoder_outputs)
-            outputs[:, t] = output
+            outputs[:, t, :] = output
             # 决定是否用正解来训练
             teacher_force = random.random() <= teacher_forcing_ratio
             # 取出输出概率最大的词
             top1 = output.argmax(1)
             # teacher force 为 True 用正解训练，否则用预测到的最大概率的词训练
-            decoder_input = repo_summary[:, t] if teacher_force and t < target_len else top1
+            decoder_input = repo_summary[:, t] if teacher_force else top1
             preds.append(top1.unsqueeze(1))
         preds = torch.cat(preds, 1)
         return outputs, preds
@@ -69,7 +72,7 @@ class SummaryTwoLevel(nn.Module):
         preds = []
         for t in range(1, target_len):
             output, s = self.decoder(decoder_input, s, encoder_outputs)
-            outputs[:, t] = output
+            outputs[:, t, :] = output
             # 取出输出概率最大的词
             top1 = output.argmax(1)
             # 用预测到的最大概率的词进行下一步预测
