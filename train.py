@@ -82,6 +82,7 @@ def train(opt):
     # 用于将生成的id转换成text
     tokenizer = MyTokenizer(opt.vocab_file)
     print(len(tokenizer.vocab))
+    opt.vocab_size = len(tokenizer.vocab)
     pad_token_id = tokenizer.pad_index
 
     print("Model's parameters: {}".format(vars(opt)))
