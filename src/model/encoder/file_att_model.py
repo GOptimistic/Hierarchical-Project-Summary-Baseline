@@ -13,7 +13,7 @@ class FileAttNet(nn.Module):
     def __init__(self, file_hidden_size=128, token_hidden_size=128, dropout=0.5):
         super(FileAttNet, self).__init__()
 
-        self.rnn = nn.GRU(token_hidden_size * 2, file_hidden_size, dropout=dropout, batch_first=True,
+        self.rnn = nn.GRU(token_hidden_size * 2, file_hidden_size, batch_first=True,
                           bidirectional=True)
         self.dropout = nn.Dropout(dropout)
         # self.fc = nn.Linear(file_hidden_size * 2, file_hidden_size * 2)

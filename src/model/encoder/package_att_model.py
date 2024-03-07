@@ -11,7 +11,7 @@ class PackageAttNet(nn.Module):
     def __init__(self, package_hidden_size=128, file_hidden_size=128, decoder_hidden_size=128, dropout=0.5):
         super(PackageAttNet, self).__init__()
 
-        self.rnn = nn.GRU(file_hidden_size * 2, package_hidden_size, dropout=dropout, batch_first=True,
+        self.rnn = nn.GRU(file_hidden_size * 2, package_hidden_size, batch_first=True,
                           bidirectional=True)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(package_hidden_size * 2, decoder_hidden_size)
