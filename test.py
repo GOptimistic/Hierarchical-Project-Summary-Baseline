@@ -40,6 +40,7 @@ def get_args():
     parser.add_argument("--n_layers", type=int, default=1)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--vocab_file", type=str, default="./w2v_vocab.json")
     args = parser.parse_args()
     return args
 
