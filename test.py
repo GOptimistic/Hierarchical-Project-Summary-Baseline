@@ -14,6 +14,7 @@ from tqdm import tqdm
 from dataset import MyDataset
 from src.model.Summary_Two_Level import SummaryTwoLevel
 from src.utils import get_evaluation, computebleu
+from tokenizer import MyTokenizer
 
 
 def get_args():
@@ -22,20 +23,22 @@ def get_args():
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--test_data_path", type=str, default="test.csv")
     parser.add_argument("--pretrained_model", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
-    parser.add_argument("--token_hidden_size", type=int, default=128)
-    parser.add_argument("--method_hidden_size", type=int, default=128)
-    parser.add_argument("--file_hidden_size", type=int, default=128)
-    parser.add_argument("--package_hidden_size", type=int, default=128)
+    parser.add_argument("--embedding_size", type=int, default=128)
+    parser.add_argument("--token_hidden_size", type=int, default=256)
+    parser.add_argument("--method_hidden_size", type=int, default=256)
+    parser.add_argument("--file_hidden_size", type=int, default=256)
+    parser.add_argument("--package_hidden_size", type=int, default=256)
+    parser.add_argument("--decoder_hidden_size", type=int, default=256)
     parser.add_argument("--output_path", type=str, default="predictions")
     parser.add_argument("--max_package_length", type=int, default=5)
     parser.add_argument("--max_file_length", type=int, default=5)
     parser.add_argument("--max_method_length", type=int, default=5)
-    parser.add_argument("--max_token_length", type=int, default=50)
-    parser.add_argument("--max_summary_length", type=int, default=20)
+    parser.add_argument("--max_token_length", type=int, default=100)
+    parser.add_argument("--max_summary_length", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
     parser.add_argument("--n_layers", type=int, default=1)
-    parser.add_argument("--dropout", type=float, default=0)
+    parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=0)
     args = parser.parse_args()
     return args
@@ -46,9 +49,10 @@ def test(opt):
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
-    tokenizer = AutoTokenizer.from_pretrained(opt.pretrained_model, trust_remote_code=True).tokenizer
-    pretrained_model = AutoModel.from_pretrained(opt.pretrained_model, trust_remote_code=True)
-    pad_token_id = tokenizer.pad_id
+    tokenizer = MyTokenizer(opt.vocab_file)
+    print(len(tokenizer.vocab))
+    opt.vocab_size = len(tokenizer.vocab)
+    pad_token_id = tokenizer.pad_index
 
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
@@ -65,7 +69,7 @@ def test(opt):
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    model = SummaryTwoLevel(opt, pretrained_model, device)
+    model = SummaryTwoLevel(opt, pad_token_id, device)
     model = model.to(device)
     model.to(device)
     checkpoint = torch.load(load_model_path)
@@ -74,7 +78,7 @@ def test(opt):
     model.eval()
     criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
     # 测试模型
-    loss_test, bleu_test, acc_test = 0.0, 0.0, 0.0
+    loss_test, bleu_test, acc_test = 0.0, 0.0, 0
     n = 0
     result = []
     for te_file_summaries, te_repo_summary in tqdm(test_generator):
@@ -89,7 +93,7 @@ def test(opt):
         te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
         loss = criterion(outputs_test, te_repo_summary)
         loss_test += loss.item()
-        acc_test += torch.eq(outputs_test.argmax(1), te_repo_summary).float().mean().item()
+        acc_test += torch.eq(outputs_test.argmax(1), te_repo_summary).float().mean().item() * batch_size
 
         # 将预测结果转为文字
         te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
@@ -102,12 +106,11 @@ def test(opt):
 
         # 记录验证集结果
         for pred, target in zip(preds_val_result, targets_result):
+            bleu_test += computebleu(pred, target)
             result.append((pred, target))
-        # 计算 Bleu Score
-        bleu_test += computebleu(preds_val_result, targets_result)
         n += batch_size
     loss_test = loss_test / len(test_generator)
-    acc_test = acc_test / len(test_generator)
+    acc_test = acc_test / n
     bleu_test = bleu_test / n
     print('test loss: {}, bleu_score: {}, acc: {}'.format(loss_test, bleu_test, acc_test))
     # 储存结果
