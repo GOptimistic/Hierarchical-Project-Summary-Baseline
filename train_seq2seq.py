@@ -49,7 +49,7 @@ INPUT_MAX_LENGTH = 500
 OUTPUT_MAX_LENGTH = 100
 OUTPUT_PATH = './flat_result'
 CLIP = 1
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 TRAIN_DATA_PATH = './data/mini_train_flat.csv'
 VALID_DATA_PATH = './data/mini_valid_flat.csv'
 
