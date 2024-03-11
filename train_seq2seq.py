@@ -50,7 +50,7 @@ OUTPUT_MAX_LENGTH = 100
 OUTPUT_PATH = './flat_result'
 CLIP = 1
 BATCH_SIZE = 64
-TRAIN_DATA_PATH = './data/mini_test_flat.csv'
+TRAIN_DATA_PATH = './data/mini_train_flat.csv'
 VALID_DATA_PATH = './data/mini_valid_flat.csv'
 
 model = Seq2Seq(VOCAB_SIZE, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DROPOUT, device).to(device)
@@ -159,13 +159,13 @@ for epoch in range(N_EPOCHS):
         acc_val,
         bleu_val))
     # 储存结果
-    with open(OUTPUT_PATH + '/test_pred_{}.txt'.format(epoch), 'w') as p, open(
-            OUTPUT_PATH + '/test_tgt_{}.txt'.format(epoch), 'w') as t:
+    with open(OUTPUT_PATH + '/pred_{}.txt'.format(epoch), 'w') as p, open(
+            OUTPUT_PATH + '/tgt_{}.txt'.format(epoch), 'w') as t:
         for line in result_val:
             print(line[0], file=p)
             print(line[1], file=t)
 
-    torch.save(model.state_dict(), OUTPUT_PATH + 'model_{}.pt'.format(epoch + 1))
+    torch.save(model.state_dict(), OUTPUT_PATH + '/model_{}.pt'.format(epoch + 1))
 
 l1, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals)
 l2, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals_eval)
