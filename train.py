@@ -47,8 +47,8 @@ def get_args():
     parser.add_argument("--max_package_length", type=int, default=5)
     parser.add_argument("--max_file_length", type=int, default=5)
     parser.add_argument("--max_method_length", type=int, default=5)
-    parser.add_argument("--max_token_length", type=int, default=100)
-    parser.add_argument("--max_summary_length", type=int, default=30)
+    parser.add_argument("--max_token_length", type=int, default=300)
+    parser.add_argument("--max_summary_length", type=int, default=90)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
     parser.add_argument("--n_layers", type=int, default=1)
@@ -163,6 +163,8 @@ def train(opt):
             loss = criterion(outputs, repo_summary)
             loss.backward()
             # grad_norm = torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1)
+            # 在优化器更新模型参数之前裁剪梯度
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0, norm_type=2)
             optimizer.step()
             accuracy = torch.eq(outputs.argmax(1), repo_summary).float().mean().item()
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(

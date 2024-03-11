@@ -13,6 +13,7 @@ import numpy as np
 lemmatizer = WordNetLemmatizer()
 porter_stemmer = PorterStemmer()
 file_summary_length = []
+repo_summary_length = []
 
 def get_wordnet_pos(treebank_tag):
     if treebank_tag.startswith('J'):
@@ -61,10 +62,10 @@ def process_token(str):
     # 转化为小写
     tokens = [x.lower() for x in tokens]
     # # 词性还原
-    sentence = ' '.join(tokens)
-    tokens = lemmatize_sentence(sentence)
-    # # 词干提取
-    # tokens = [porter_stemmer.stem(x) for x in tokens]
+    # sentence = ' '.join(tokens)
+    # tokens = lemmatize_sentence(sentence)
+    # 词干提取
+    tokens = [porter_stemmer.stem(x) for x in tokens]
 
     return ' '.join(tokens)
 
@@ -89,7 +90,10 @@ def handle_file_summaries(repo_name, file_summaries):
 
 # 处理summary
 def handle_repo_summary(repo_summary):
-    return process_token(repo_summary)
+    global repo_summary_length
+    res = process_token(repo_summary)
+    repo_summary_length.append(len(res))
+    return res
 
 
 def print_data_status(data):
@@ -123,12 +127,15 @@ def handle_csv():
 
     # 使用glob找到所有的csv文件
     csv_files = glob.glob(csv_files_path)
-
+    print(len(csv_files))
     # 创建一个空列表来存储每个文件的DataFrame
     data_frames = []
     # 逐个读取CSV文件
     for filename in csv_files:
-        df = pd.read_csv(filename, header=0)
+        try:
+            df = pd.read_csv(filename, header=0)
+        except Exception as e:
+            print(filename)
         # print(df)
         for index, row in df.iterrows():
             row['file_summaries'] = handle_file_summaries(row['repo_name'], row['file_summaries'])
@@ -139,7 +146,7 @@ def handle_csv():
     combined_df = pd.concat(data_frames, ignore_index=True)
     combined_df = combined_df.drop('repo_name', axis=1)
     combined_df.to_csv('./mini_all.csv', index=False)
-    # print(combined_df)
+    print(len(combined_df))
     # 划分数据集
     train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
     print(len(train_df))
@@ -160,3 +167,5 @@ if __name__ == '__main__':
     # 打印信息
     print('###### File summary level')
     print_data_status(file_summary_length)
+    print('###### Repo summary level')
+    print_data_status(repo_summary_length)
