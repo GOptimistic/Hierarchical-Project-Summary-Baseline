@@ -106,66 +106,67 @@ for epoch in range(N_EPOCHS):
         pbar.set_postfix(loss=loss.item(), acc=accuracy)
     loss_vals.append(np.mean(epoch_loss))
 
-    model.eval()
-    epoch_loss_eval = []
-    pbar = tqdm(valid_generator)
-    pbar.set_description("[Eval Epoch {}]".format(epoch))
-    # 记录验证集结果
-    result_val = []
-    acc_num = 0
-    bleu_val = 0.0
-    n = 0
-    for src, trg in pbar:
-        trg, src = trg.to(device), src.to(device)
-        model.zero_grad()
-        batch_size = src.size(0)
-        n += batch_size
-        output = model.inference(src, OUTPUT_MAX_LENGTH, SOS_IDX)
-        preds = output.argmax(2)
-        # trg = [batch size, trg len]
-        # output = [batch size, trg len, output dim]
-        output_dim = output.shape[-1]
-        output = output[:, 1:, :].reshape(-1, output_dim)
-        trg = trg[:, 1:].reshape(-1)
-        # trg = [(trg len - 1) * batch size]
-        # output = [(trg len - 1) * batch size, output dim]
-        loss = criterion(output, trg)
-        epoch_loss_eval.append(loss.item())
-        accuracy = torch.eq(output.argmax(1), trg).float().mean().item()
-        acc_num += accuracy * batch_size
-        # 将预测结果转为文字
-        trg = trg.view(src.size(0), -1)
-        preds_val_result = []
-        for pred in preds:
-            preds_val_result.append(tokenizer.decode(pred.int().tolist()))
-        targets_result = []
-        for t in trg:
-            targets_result.append(tokenizer.decode(t.int().tolist()))
+    with torch.no_grad():
+        model.eval()
+        epoch_loss_eval = []
+        pbar = tqdm(valid_generator)
+        pbar.set_description("[Eval Epoch {}]".format(epoch))
+        # 记录验证集结果
+        result_val = []
+        acc_num = 0
+        bleu_val = 0.0
+        n = 0
+        for src, trg in pbar:
+            trg, src = trg.to(device), src.to(device)
+            model.zero_grad()
+            batch_size = src.size(0)
+            n += batch_size
+            output = model.inference(src, OUTPUT_MAX_LENGTH, SOS_IDX)
+            preds = output.argmax(2)
+            # trg = [batch size, trg len]
+            # output = [batch size, trg len, output dim]
+            output_dim = output.shape[-1]
+            output = output[:, 1:, :].reshape(-1, output_dim)
+            trg = trg[:, 1:].reshape(-1)
+            # trg = [(trg len - 1) * batch size]
+            # output = [(trg len - 1) * batch size, output dim]
+            loss = criterion(output, trg)
+            epoch_loss_eval.append(loss.item())
+            accuracy = torch.eq(output.argmax(1), trg).float().mean().item()
+            acc_num += accuracy * batch_size
+            # 将预测结果转为文字
+            trg = trg.view(src.size(0), -1)
+            preds_val_result = []
+            for pred in preds:
+                preds_val_result.append(tokenizer.decode(pred.int().tolist()))
+            targets_result = []
+            for t in trg:
+                targets_result.append(tokenizer.decode(t.int().tolist()))
 
-        for pred, target in zip(preds_val_result, targets_result):
-            result_val.append((pred, target))
-            # 计算 Bleu Score
-            bleu_val += computebleu(pred, target)
+            for pred, target in zip(preds_val_result, targets_result):
+                result_val.append((pred, target))
+                # 计算 Bleu Score
+                bleu_val += computebleu(pred, target)
 
-        pbar.set_postfix(loss=loss.item(), acc=accuracy)
-    mean_loss = np.mean(epoch_loss_eval)
-    loss_vals_eval.append(mean_loss)
-    acc_val = acc_num / n
-    bleu_val = bleu_val / n
-    print("@@@@@@ Epoch Valid Test: {}/{}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
-        epoch + 1,
-        N_EPOCHS,
-        mean_loss,
-        acc_val,
-        bleu_val))
-    # 储存结果
-    with open(OUTPUT_PATH + '/pred_{}.txt'.format(epoch), 'w') as p, open(
-            OUTPUT_PATH + '/tgt_{}.txt'.format(epoch), 'w') as t:
-        for line in result_val:
-            print(line[0], file=p)
-            print(line[1], file=t)
+            pbar.set_postfix(loss=loss.item(), acc=accuracy)
+        mean_loss = np.mean(epoch_loss_eval)
+        loss_vals_eval.append(mean_loss)
+        acc_val = acc_num / n
+        bleu_val = bleu_val / n
+        print("@@@@@@ Epoch Valid Test: {}/{}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+            epoch + 1,
+            N_EPOCHS,
+            mean_loss,
+            acc_val,
+            bleu_val))
+        # 储存结果
+        with open(OUTPUT_PATH + '/pred_{}.txt'.format(epoch), 'w') as p, open(
+                OUTPUT_PATH + '/tgt_{}.txt'.format(epoch), 'w') as t:
+            for line in result_val:
+                print(line[0], file=p)
+                print(line[1], file=t)
 
-    torch.save(model.state_dict(), OUTPUT_PATH + '/model_{}.pt'.format(epoch + 1))
+        torch.save(model.state_dict(), OUTPUT_PATH + '/model_{}.pt'.format(epoch + 1))
 
 l1, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals)
 l2, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals_eval)
