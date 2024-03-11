@@ -14,6 +14,7 @@ max_length_package = 5
 max_length_file = 5
 max_length_method = 10
 filterout_regex = 'util|test|docs'
+keywords = ['if', 'for', 'while', 'try', 'catch', 'throw', 'else', 'switch', 'case', 'do']
 
 
 def get_method_names(code_text):
@@ -25,9 +26,10 @@ def get_method_names(code_text):
     pattern = r'\b[\w<>\[\]]+\s+(\w+)\s*\([^)]*\)\s*{'
 
     matches = re.findall(pattern, code_text)
-
-    # 抽取函数名
-    function_names = [match for match in matches]
+    function_names = []
+    for match in matches:
+        if match.lower() not in keywords:
+            function_names.append(match)
     return function_names
 
 
