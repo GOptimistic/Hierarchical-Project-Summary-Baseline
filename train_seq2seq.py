@@ -5,36 +5,17 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from load_data import train_iter, val_iter, id2vocab, PAD_IDX, SOS_IDX
+from torch.utils.data import DataLoader
+from dataset_flat import MyDatasetFlat
 from src.model.model_seq2seq import Encoder, Decoder, Seq2Seq, Attention
-
-device = "cuda" if torch.cuda.is_available() else 'cpu'
-INPUT_DIM = len(id2vocab)
-OUTPUT_DIM = len(id2vocab)
-ENC_EMB_DIM = 256
-DEC_EMB_DIM = 256
-ENC_HID_DIM = 512
-DEC_HID_DIM = 512
-ENC_DROPOUT = 0.5
-DEC_DROPOUT = 0.5
-N_EPOCHS = 300
-OUTPUT_MAX_LENGTH = 30
-OUTPUT_PATH = './direct_summary_result'
-CLIP = 1
-
-attn = Attention(ENC_HID_DIM, DEC_HID_DIM)
-enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, ENC_DROPOUT)
-dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DEC_DROPOUT, attn)
-
-model = Seq2Seq(enc, dec, device).to(device)
+from src.utils import computebleu
+from tokenizer import MyTokenizer
 
 
-def decode(ids_list):
-    res = []
-    for id in ids_list:
-        word = id2vocab[id]
-        res.append(word)
-    return ' '.join(res)
+def count_parameters(model):
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params, trainable_params
 
 
 def init_weights(m):
@@ -45,11 +26,53 @@ def init_weights(m):
             nn.init.constant_(param.data, 0)
 
 
-def count_parameters(model):
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    return total_params, trainable_params
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(123)
+else:
+    torch.manual_seed(123)
+device = "cuda" if torch.cuda.is_available() else 'cpu'
+VOCAB_FILE = './w2v_vocab_flat.json'
+tokenizer = MyTokenizer(VOCAB_FILE)
+print(len(tokenizer.vocab))
+id2vocab = tokenizer.inverse_vocab
+PAD_IDX = tokenizer.pad_index
+SOS_IDX = tokenizer.sos_index
+INPUT_DIM = len(id2vocab)
+OUTPUT_DIM = len(id2vocab)
+ENC_EMB_DIM = 256
+DEC_EMB_DIM = 256
+ENC_HID_DIM = 512
+DEC_HID_DIM = 512
+ENC_DROPOUT = 0.5
+DEC_DROPOUT = 0.5
+N_EPOCHS = 300
+INPUT_MAX_LENGTH = 500
+OUTPUT_MAX_LENGTH = 100
+OUTPUT_PATH = './flat_result'
+CLIP = 1
+BATCH_SIZE = 64
+TRAIN_DATA_PATH = './data/mini_train_flat.csv'
+VALID_DATA_PATH = './data/mini_valid_flat.csv'
 
+enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, ENC_DROPOUT)
+dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DEC_DROPOUT)
+
+model = Seq2Seq(enc, dec, device).to(device)
+
+# 数据加载
+training_params = {"batch_size": BATCH_SIZE,
+                   "shuffle": True,
+                   "drop_last": True}
+valid_params = {"batch_size": BATCH_SIZE,
+                "shuffle": False,
+                "drop_last": False}
+
+training_set = MyDatasetFlat(TRAIN_DATA_PATH, INPUT_MAX_LENGTH,
+                             OUTPUT_MAX_LENGTH, tokenizer)
+training_generator = DataLoader(training_set, **training_params)
+valid_set = MyDatasetFlat(VALID_DATA_PATH, INPUT_MAX_LENGTH,
+                          OUTPUT_MAX_LENGTH, tokenizer)
+valid_generator = DataLoader(valid_set, **valid_params)
 
 total_params, trainable_params = count_parameters(model)
 print(f"Total parameters: {total_params}")
@@ -65,7 +88,7 @@ loss_vals_eval = []
 for epoch in range(N_EPOCHS):
     model.train()
     epoch_loss = []
-    pbar = tqdm(train_iter)
+    pbar = tqdm(training_generator)
     pbar.set_description("[Train Epoch {}]".format(epoch))
     for src, trg in pbar:
         trg, src = trg.to(device), src.to(device)
@@ -89,13 +112,16 @@ for epoch in range(N_EPOCHS):
 
     model.eval()
     epoch_loss_eval = []
-    pbar = tqdm(val_iter)
+    pbar = tqdm(valid_generator)
     pbar.set_description("[Eval Epoch {}]".format(epoch))
     # 记录验证集结果
     result_val = []
+    acc_num = 0
+    bleu_val = 0.0
     for src, trg in pbar:
         trg, src = trg.to(device), src.to(device)
         model.zero_grad()
+        batch_size = src.size(0)
         output = model.inference(src, OUTPUT_MAX_LENGTH, SOS_IDX)
         # trg = [batch size, trg len]
         # output = [batch size, trg len, output dim]
@@ -107,21 +133,33 @@ for epoch in range(N_EPOCHS):
         loss = criterion(output, trg)
         epoch_loss_eval.append(loss.item())
         accuracy = torch.eq(output.argmax(1), trg).float().mean().item()
+        acc_num += accuracy * batch_size
         # 将预测结果转为文字
         trg = trg.view(src.size(0), -1)
         preds = output.argmax(1).view(src.size(0), -1)
         preds_val_result = []
         for pred in preds:
-            preds_val_result.append(decode(pred.int().tolist()))
+            preds_val_result.append(tokenizer.decode(pred.int().tolist()))
         targets_result = []
         for t in trg:
-            targets_result.append(decode(t.int().tolist()))
+            targets_result.append(tokenizer.decode(t.int().tolist()))
 
         for pred, target in zip(preds_val_result, targets_result):
             result_val.append((pred, target))
+            # 计算 Bleu Score
+            bleu_val += computebleu(pred, target)
 
         pbar.set_postfix(loss=loss.item(), acc=accuracy)
-    loss_vals_eval.append(np.mean(epoch_loss_eval))
+    mean_loss = np.mean(epoch_loss_eval)
+    loss_vals_eval.append(mean_loss)
+    acc_val = acc_num / len(valid_generator)
+    bleu_val = bleu_val / len(valid_generator)
+    print("@@@@@@ Epoch Valid Test: {}/{}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+        epoch + 1,
+        N_EPOCHS,
+        mean_loss,
+        acc_val,
+        bleu_val))
     # 储存结果
     with open(OUTPUT_PATH + '/test_pred_{}.txt'.format(epoch), 'w') as p, open(
             OUTPUT_PATH + '/test_tgt_{}.txt'.format(epoch), 'w') as t:
@@ -129,7 +167,7 @@ for epoch in range(N_EPOCHS):
             print(line[0], file=p)
             print(line[1], file=t)
 
-    torch.save(model.state_dict(), 'model_{}.pt'.format(epoch))
+    torch.save(model.state_dict(), 'model_{}.pt'.format(epoch + 1))
 
 l1, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals)
 l2, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals_eval)

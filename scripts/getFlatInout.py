@@ -12,7 +12,7 @@ dst_csv_data_path = '../data/mini_all_flat.csv'
 repo_path = '/home/LAB/guanz/gz_graduation/clone_github_repo_data/github_repo_data/java'
 max_length_package = 5
 max_length_file = 5
-max_length_method = 10
+max_length_method = 5
 filterout_regex = 'util|test|docs'
 keywords = ['if', 'for', 'while', 'try', 'catch', 'throw', 'else', 'switch', 'case', 'do']
 

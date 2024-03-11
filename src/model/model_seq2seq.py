@@ -99,7 +99,7 @@ class Seq2Seq(nn.Module):
         self.decoder = Decoder(vacab_size, emb_dim, enc_hid_dim, dec_hid_dim, dropout)
         self.device = device
 
-    def forward(self, src, trg, teacher_forcing_ratio=0.5):
+    def forward(self, src, trg, teacher_forcing_ratio=1.0):
         # src = [batch size, src len]
         # trg = [batch size, trg len]
         # teacher_forcing_ratio is probability to use teacher forcing
