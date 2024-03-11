@@ -58,7 +58,7 @@ def get_project_flat_input(json_path):
             methods_name = []
             for method in methods:
                 methods_name.extend(get_method_names(method))
-            file_info = '{} method {} '.format(file, ' '.join(methods_name))
+            file_info = 'file {} method {} '.format(file, ' '.join(methods_name))
             package_info += file_info
         flat_input += package_info
 
