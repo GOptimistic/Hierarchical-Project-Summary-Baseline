@@ -2,3 +2,7 @@
 前一阶段采用chatglm大模型离线生成每个file的摘要，后一阶段采用两层模型生成project级别的向量信息，输出到解码器进行摘要生成
 
 file_summary_data存放chatglm生成的文件级别摘要
+
+scripts 存放脚本
+    word2vec.py 生成词表
+    getFlatInout.py 将repo_tree.json中的package名文件名和函数名拉平成一个输入，直接去做摘要

@@ -14,7 +14,7 @@ def handle_file_summaries_rwo(file_summaries):
     return result
 
 # df = pd.read_csv('./data/mini_all.csv')
-df = pd.read_csv('./src/file_summary_data/mini_all.csv')
+df = pd.read_csv('../src/file_summary_data/mini_all.csv')
 df.head()
 SOS = '<sos>'
 PAD = '<pad>'
@@ -37,5 +37,5 @@ for i in range(len(index_to_key)):
     vocab[index_to_key[i]] = i
 
 json_str = json.dumps(vocab)
-with open('w2v_vocab.json', 'w') as f:
+with open('../w2v_vocab.json', 'w') as f:
     f.write(json_str)
