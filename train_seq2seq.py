@@ -37,14 +37,13 @@ print(len(tokenizer.vocab))
 id2vocab = tokenizer.inverse_vocab
 PAD_IDX = tokenizer.pad_index
 SOS_IDX = tokenizer.sos_index
-INPUT_DIM = len(id2vocab)
-OUTPUT_DIM = len(id2vocab)
+VOCAB_SIZE = len(id2vocab)
+print(VOCAB_SIZE)
 ENC_EMB_DIM = 256
 DEC_EMB_DIM = 256
 ENC_HID_DIM = 512
 DEC_HID_DIM = 512
-ENC_DROPOUT = 0.5
-DEC_DROPOUT = 0.5
+DROPOUT = 0.5
 N_EPOCHS = 300
 INPUT_MAX_LENGTH = 500
 OUTPUT_MAX_LENGTH = 100
@@ -54,10 +53,7 @@ BATCH_SIZE = 64
 TRAIN_DATA_PATH = './data/mini_train_flat.csv'
 VALID_DATA_PATH = './data/mini_valid_flat.csv'
 
-enc = Encoder(INPUT_DIM, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, ENC_DROPOUT)
-dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DEC_DROPOUT)
-
-model = Seq2Seq(enc, dec, device).to(device)
+model = Seq2Seq(VOCAB_SIZE, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DROPOUT, device).to(device)
 
 # 数据加载
 training_params = {"batch_size": BATCH_SIZE,
