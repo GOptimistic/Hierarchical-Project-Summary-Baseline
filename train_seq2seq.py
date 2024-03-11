@@ -50,7 +50,7 @@ OUTPUT_MAX_LENGTH = 100
 OUTPUT_PATH = './flat_result'
 CLIP = 1
 BATCH_SIZE = 64
-TRAIN_DATA_PATH = './data/mini_train_flat.csv'
+TRAIN_DATA_PATH = './data/mini_test_flat.csv'
 VALID_DATA_PATH = './data/mini_valid_flat.csv'
 
 model = Seq2Seq(VOCAB_SIZE, ENC_EMB_DIM, ENC_HID_DIM, DEC_HID_DIM, DROPOUT, device).to(device)
@@ -114,11 +114,14 @@ for epoch in range(N_EPOCHS):
     result_val = []
     acc_num = 0
     bleu_val = 0.0
+    n = 0
     for src, trg in pbar:
         trg, src = trg.to(device), src.to(device)
         model.zero_grad()
         batch_size = src.size(0)
+        n += batch_size
         output = model.inference(src, OUTPUT_MAX_LENGTH, SOS_IDX)
+        preds = output.argmax(2)
         # trg = [batch size, trg len]
         # output = [batch size, trg len, output dim]
         output_dim = output.shape[-1]
@@ -132,7 +135,6 @@ for epoch in range(N_EPOCHS):
         acc_num += accuracy * batch_size
         # 将预测结果转为文字
         trg = trg.view(src.size(0), -1)
-        preds = output.argmax(1).view(src.size(0), -1)
         preds_val_result = []
         for pred in preds:
             preds_val_result.append(tokenizer.decode(pred.int().tolist()))
@@ -148,8 +150,8 @@ for epoch in range(N_EPOCHS):
         pbar.set_postfix(loss=loss.item(), acc=accuracy)
     mean_loss = np.mean(epoch_loss_eval)
     loss_vals_eval.append(mean_loss)
-    acc_val = acc_num / len(valid_generator)
-    bleu_val = bleu_val / len(valid_generator)
+    acc_val = acc_num / n
+    bleu_val = bleu_val / n
     print("@@@@@@ Epoch Valid Test: {}/{}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
         epoch + 1,
         N_EPOCHS,
@@ -163,7 +165,7 @@ for epoch in range(N_EPOCHS):
             print(line[0], file=p)
             print(line[1], file=t)
 
-    torch.save(model.state_dict(), 'model_{}.pt'.format(epoch + 1))
+    torch.save(model.state_dict(), OUTPUT_PATH + 'model_{}.pt'.format(epoch + 1))
 
 l1, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals)
 l2, = plt.plot(np.linspace(1, N_EPOCHS, N_EPOCHS).astype(int), loss_vals_eval)
