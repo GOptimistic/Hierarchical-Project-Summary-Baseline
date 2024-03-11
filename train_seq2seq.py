@@ -75,7 +75,7 @@ print(f"Total parameters: {total_params}")
 print(f"Trainable parameters: {trainable_params}")
 model.apply(init_weights)
 
-optimizer = optim.Adam(model.parameters(), lr=5e-5)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 # we ignore the loss whenever the target token is a padding token.
 criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
