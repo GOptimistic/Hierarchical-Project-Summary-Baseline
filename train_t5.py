@@ -179,6 +179,7 @@ def train(opt):
                 model.eval()
 
                 bleu_val = 0.0
+                bleu_one, bleu_two, bleu_three, bleu_four = 0.0, 0.0, 0.0, 0.0
                 n = 0
                 result_val = []
                 for data in tqdm(valid_generator):
@@ -207,23 +208,36 @@ def train(opt):
                     # 记录验证集结果
                     for pred, target in zip(preds, targets):
                         # 计算 Bleu Score
+                        bleu_one += sentence_bleu([target.split()], pred.split(), weights=(1, 0, 0, 0))
+                        bleu_two += sentence_bleu([target.split()], pred.split(), weights=(0, 1, 0, 0))
+                        bleu_three += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 1, 0))
+                        bleu_four += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 0, 1))
+
                         bleu_val += computebleu(pred, target)
                         result_val.append((pred, target))
                     n += batch_size
                 bleu_val = bleu_val / n
+                bleu_one = bleu_one / n
+                bleu_two = bleu_two / n
+                bleu_three = bleu_three / n
+                bleu_four = bleu_four / n
                 # acc_val = acc_val / token_n
                 # val_acces.append(acc_val)
                 val_bleu_scores.append(bleu_val)
                 # 储存结果
-                with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
+                with open(bleu_path + "/valid_result_{}.txt".format(epoch + 1), 'w') as f:
                     for line in result_val:
                         print(line, file=f)
                 if bleu_val < best_bleu:
                     best_bleu = bleu_val
                     best_epoch = epoch
-                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu-4 score: {}".format(
+                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu1 {} Bleu2{} Bleu3{} Bleu4{} Bleu-4 score: {}".format(
                     epoch + 1,
                     opt.num_epoches,
+                    bleu_one,
+                    bleu_two,
+                    bleu_three,
+                    bleu_four,
                     bleu_val))
                 # writer.add_scalar('Valid/Loss', loss_val, epoch)
                 # writer.add_scalar('Valid/Accuracy', acc_val, epoch)
