@@ -120,7 +120,7 @@ def train(opt):
 
     # criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr)
-    best_loss = 1e9
+    best_bleu = 1e9
     best_epoch = 0
     epoch_finished = -1
     if opt.checkpoint > 0:
@@ -129,7 +129,7 @@ def train(opt):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch_finished = checkpoint['epoch']
-        best_loss = checkpoint['best_loss']
+        best_bleu = checkpoint['best_bleu']
         best_epoch = checkpoint['best_epoch']
 
     # torch.autograd.set_detect_anomaly(True)
@@ -138,7 +138,7 @@ def train(opt):
     num_iter_per_epoch = len(training_generator)
     # total_steps = num_iter_per_epoch * opt.num_epoches
     # kk = np.argmin([np.abs(total_steps / 2 - x * np.log(x)) for x in range(1, total_steps)])
-    train_losses, val_losses, val_bleu_scores = [], [], []
+    train_losses, val_acces, val_bleu_scores = [], [], []
     for epoch in range(opt.num_epoches):
         if epoch + 1 <= epoch_finished:
             print("###### Epoch {} has archived".format(epoch + 1))
@@ -178,14 +178,15 @@ def train(opt):
             with torch.no_grad():
                 model.eval()
 
-                loss_val, bleu_val, acc_val = 0.0, 0.0, 0
+                bleu_val, acc_val = 0.0, 0
                 n = 0
+                token_n = 0
                 result_val = []
-                bleus = []
                 for data in tqdm(valid_generator):
                     target_ids = data['target_ids'].to(device, dtype=torch.long)
                     ids = data['source_ids'].to(device, dtype=torch.long)
                     mask = data['source_mask'].to(device, dtype=torch.long)
+                    batch_size = target_ids.size(0)
                     generated_ids = model.generate(
                         input_ids=ids,
                         attention_mask=mask,
@@ -195,63 +196,48 @@ def train(opt):
                         length_penalty=1.0,
                         early_stopping=True
                     )
-                    print('generated_ids {}'.format(generated_ids))
+                    accuracy = torch.eq(generated_ids.reshape(-1), target_ids.reshape(-1)).float().mean().item()
+                    acc_val += accuracy * target_ids.size(0) * target_ids.size(1)
+                    token_n += target_ids.size(0) * target_ids.size(1)
+                    # print('generated_ids {}'.format(generated_ids))
                     preds = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=True) for g in
                              generated_ids]
-                    target = [tokenizer.decode(t, skip_special_tokens=True, clean_up_tokenization_spaces=True) for t in
+                    targets = [tokenizer.decode(t, skip_special_tokens=True, clean_up_tokenization_spaces=True) for t in
                               target_ids]
-                    print('preds {}'.format(preds))
-                    print('target {}'.format(target))
-                    bleu_4 = sentence_bleu([tar.split() for tar in target], preds[0].split(), [0.25, 0.25, 0.25, 0.25])
-                    bleus.append(bleu_4)
-
-                    # loss_val += loss.item()
-                    # acc_val += torch.eq(outputs_val.argmax(1), te_repo_summary).float().mean().item() * batch_size
-
-                    # 将预测结果转为文字
-                    # te_repo_summary = te_repo_summary.view(batch_size, -1)
-                    # preds_val_result = []
-                    # for pred in preds_val:
-                    #     preds_val_result.append(tokenizer.decode(pred.int().tolist()))
-                    # targets_result = []
-                    # for tgt in te_repo_summary:
-                    #     targets_result.append(tokenizer.decode(tgt.int().tolist()))
-
                     # 记录验证集结果
-                    # for pred, target in zip(preds_val_result, targets_result):
-                    #     # 计算 Bleu Score
-                    #     bleu_val += computebleu(pred, target)
-                    #     result_val.append((pred, target))
-                    # n += batch_size
-                # loss_val = loss_val / len(valid_generator)
-                # acc_val = acc_val / n
-                # bleu_val = bleu_val / n
-                # val_losses.append(loss_val)
-                # val_bleu_scores.append(bleu_val)
+                    for pred, target in zip(preds, targets):
+                        # 计算 Bleu Score
+                        bleu_val += computebleu(pred, target)
+                        result_val.append((pred, target))
+                    n += batch_size
+                bleu_val = bleu_val / n
+                acc_val = acc_val / token_n
+                val_acces.append(acc_val)
+                val_bleu_scores.append(bleu_val)
                 # 储存结果
-                # with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
-                #     for line in result_val:
-                #         print(line, file=f)
-                # if loss_val + opt.es_min_delta < best_loss:
-                #     best_loss = loss_val
-                #     best_epoch = epoch
-                bleu_res = sum(bleus) / len(bleus)
-                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu-4 score: {}".format(
+                with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
+                    for line in result_val:
+                        print(line, file=f)
+                if bleu_val < best_bleu:
+                    best_bleu = bleu_val
+                    best_epoch = epoch
+                print("@@@@@@ Epoch Valid Test: {}/{}, Acc: {} Bleu-4 score: {}".format(
                     epoch + 1,
                     opt.num_epoches,
-                    bleu_res))
+                    acc_val,
+                    bleu_val))
                 # writer.add_scalar('Valid/Loss', loss_val, epoch)
-                # writer.add_scalar('Valid/Accuracy', acc_val, epoch)
-                writer.add_scalar('Valid/Bleu-4', bleu_res, epoch)
+                writer.add_scalar('Valid/Accuracy', acc_val, epoch)
+                writer.add_scalar('Valid/Bleu-4', bleu_val, epoch)
 
                 # 保存模型
-                # checkpoint = {"model_state_dict": model.state_dict(),
-                #               "optimizer_state_dict": optimizer.state_dict(),
-                #               "epoch": epoch + 1,
-                #               "best_loss": best_loss,
-                #               "best_epoch": best_epoch}
-                # path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
-                # torch.save(checkpoint, path_checkpoint)
+                checkpoint = {"model_state_dict": model.state_dict(),
+                              "optimizer_state_dict": optimizer.state_dict(),
+                              "epoch": epoch + 1,
+                              "best_bleu": best_bleu,
+                              "best_epoch": best_epoch}
+                path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
+                torch.save(checkpoint, path_checkpoint)
 
     writer.close()
     # 绘图
@@ -263,11 +249,11 @@ def train(opt):
     plt.savefig('./train_loss.png')
 
     plt.figure(2)
-    plt.plot(range(1, len(val_losses) + 1), val_losses)
+    plt.plot(range(1, len(val_acces) + 1), val_acces)
     plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Valid Loss')
-    plt.savefig('./valid_loss.png')
+    plt.ylabel('Acc')
+    plt.title('Valid Accuracy')
+    plt.savefig('./valid_acc.png')
 
     plt.figure(3)
     plt.plot(range(1, len(val_bleu_scores) + 1), val_bleu_scores)
@@ -276,7 +262,7 @@ def train(opt):
     plt.title('Valid Bleu-4 Score')
     plt.savefig('./valid_bleu.png')
     # torch.autograd.set_detect_anomaly(False)
-    print("###### Train done. Best loss {}. Best epoch {}".format(best_loss, best_epoch))
+    print("###### Train done. Best loss {}. Best epoch {}".format(best_bleu, best_epoch))
 
 
 if __name__ == "__main__":
