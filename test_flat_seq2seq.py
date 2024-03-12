@@ -55,12 +55,9 @@ def test(opt):
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
                    "drop_last": False}
-    test_set = MyDataset(opt.test_data_path, opt.max_package_length, opt.max_file_length, opt.max_token_length,
+    test_set = MyDataset(opt.test_data_path, opt.max_input_length, opt.max_output_length, opt.max_token_length,
                           opt.max_summary_length, tokenizer)
     test_generator = DataLoader(test_set, num_workers=opt.num_workers, **test_params)
-    if os.path.isdir(opt.output_path):
-        shutil.rmtree(opt.output_path)
-    os.makedirs(opt.output_path)
     load_model_path = "./flat_result/model_{}.pt".format(opt.checkpoint)  # 读取模型位置
 
     if torch.cuda.is_available():
