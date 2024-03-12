@@ -231,7 +231,7 @@ def train(opt):
                 if bleu_val < best_bleu:
                     best_bleu = bleu_val
                     best_epoch = epoch
-                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu1 {} Bleu2{} Bleu3{} Bleu4{} Bleu-4 score: {}".format(
+                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu1 {} Bleu2 {} Bleu3 {} Bleu4 {} Bleu-4 score: {}".format(
                     epoch + 1,
                     opt.num_epoches,
                     bleu_one,
