@@ -193,9 +193,10 @@ def train(opt):
                         max_length=opt.max_summary_length,
                         num_beams=2,
                         repetition_penalty=2.5,
-                        length_penalty=1.0,
-                        early_stopping=True
+                        length_penalty=1.0
                     )
+                    print(generated_ids.shape)
+                    print(target_ids.shape)
                     accuracy = torch.eq(generated_ids.reshape(-1), target_ids.reshape(-1)).float().mean().item()
                     acc_val += accuracy * target_ids.size(0) * target_ids.size(1)
                     token_n += target_ids.size(0) * target_ids.size(1)
