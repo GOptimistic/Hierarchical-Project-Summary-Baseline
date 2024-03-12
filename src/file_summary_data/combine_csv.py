@@ -144,7 +144,7 @@ def handle_csv():
 
     # 合并所有DataFrame
     combined_df = pd.concat(data_frames, ignore_index=True)
-    combined_df = combined_df.drop('repo_name', axis=1)
+    # combined_df = combined_df.drop('repo_name', axis=1)
     combined_df.to_csv('./mini_all.csv', index=False)
     print(len(combined_df))
     # 划分数据集
