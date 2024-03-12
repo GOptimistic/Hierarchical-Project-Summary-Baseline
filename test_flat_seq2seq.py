@@ -14,6 +14,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from dataset import MyDataset
+from dataset_flat import MyDatasetFlat
 from src.model.Summary_Two_Level import SummaryTwoLevel
 from src.model.model_seq2seq import Seq2Seq
 from src.utils import get_evaluation, computebleu
@@ -25,7 +26,8 @@ def get_args():
         """Implementation of the model described in the paper: Hierarchical Attention Networks for Document Classification""")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--test_data_path", type=str, default="./data/mini_test_flat.csv")
-    parser.add_argument("--pretrained_model", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
+    parser.add_argument("--pretrained_model", type=str,
+                        default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
     parser.add_argument("--embedding_size", type=int, default=128)
     parser.add_argument("--hidden_size", type=int, default=256)
     parser.add_argument("--output_path", type=str, default="predictions_flat")
@@ -55,9 +57,11 @@ def test(opt):
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
                    "drop_last": False}
-    test_set = MyDataset(opt.test_data_path, opt.max_input_length, opt.max_output_length, opt.max_token_length,
-                          opt.max_summary_length, tokenizer)
-    test_generator = DataLoader(test_set, num_workers=opt.num_workers, **test_params)
+    test_set = MyDatasetFlat(opt.test_data_path,
+                             opt.max_input_length,
+                             opt.max_output_length,
+                             tokenizer)
+    test_generator = DataLoader(test_set, **test_params)
     load_model_path = "./flat_result/model_{}.pt".format(opt.checkpoint)  # 读取模型位置
 
     if torch.cuda.is_available():
@@ -135,7 +139,8 @@ def test(opt):
             bleu_four,
             bleu_test, acc_test))
         # 储存结果
-        with open(opt.output_path + '/test_seq_pred.txt', 'w') as p, open(opt.output_path + '/test_seq_tgt.txt', 'w') as t:
+        with open(opt.output_path + '/test_seq_pred.txt', 'w') as p, open(opt.output_path + '/test_seq_tgt.txt',
+                                                                          'w') as t:
             for line in result:
                 print(line[0], file=p)
                 print(line[1], file=t)
