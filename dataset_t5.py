@@ -50,9 +50,9 @@ class MyDatasetFileSummaryT5(Dataset):
 
     def __getitem__(self, index):
         file_summary, repo_summary = self.data_list[index]
-        source = self.tokenizer.batch_encode_plus([file_summary], max_length=self.max_token_length, truncation=True, pad_to_max_length=True,
+        source = self.tokenizer.batch_encode_plus([file_summary], max_length=self.max_token_length, truncation=True, padding='max_length',
                                                   return_tensors='pt')
-        target = self.tokenizer.batch_encode_plus([repo_summary], max_length=self.max_summary_length, truncation=True, pad_to_max_length=True,
+        target = self.tokenizer.batch_encode_plus([repo_summary], max_length=self.max_summary_length, truncation=True, padding='max_length',
                                                   return_tensors='pt')
 
         source_ids = source['input_ids'].squeeze()
