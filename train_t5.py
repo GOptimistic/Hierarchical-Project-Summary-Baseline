@@ -27,7 +27,7 @@ from tokenizer import MyTokenizer
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_epoches", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--momentum", type=float, default=0.9)
@@ -40,8 +40,8 @@ def get_args():
                         help="Early stopping's parameter: minimum change loss to qualify as an improvement")
     parser.add_argument("--es_patience", type=int, default=10,
                         help="Early stopping's parameter: number of epochs with no improvement after which training will be stopped. Set to 0 to disable this technique.")
-    parser.add_argument("--train_data_path", type=str, default="train.csv")
-    parser.add_argument("--valid_data_path", type=str, default="valid.csv")
+    parser.add_argument("--train_data_path", type=str, default="./data/mini_train_t5.csv")
+    parser.add_argument("--valid_data_path", type=str, default="./data/mini_valid_t5.csv")
     parser.add_argument("--valid_interval", type=int, default=1, help="Number of epoches between testing phases")
     parser.add_argument("--t5_path", type=str,
                         default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/google-flan-t5-large")
@@ -161,6 +161,7 @@ def train(opt):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            y = y[:, 1:]
             print(preds.shape, y.shape)
             accuracy = torch.eq(preds.view(y.size(0) * y.size(1), -1).argmax(1), y.view(-1)).float().mean().item()
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
