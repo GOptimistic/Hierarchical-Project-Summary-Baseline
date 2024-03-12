@@ -5,6 +5,8 @@ import argparse
 import csv
 import os
 import shutil
+
+from nltk.translate.bleu_score import sentence_bleu
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 import torch
@@ -21,7 +23,7 @@ def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model described in the paper: Hierarchical Attention Networks for Document Classification""")
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--test_data_path", type=str, default="test.csv")
+    parser.add_argument("--test_data_path", type=str, default="./data/mini_test_one_level.csv")
     parser.add_argument("--pretrained_model", type=str, default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/chatglm3-6b-128k")
     parser.add_argument("--embedding_size", type=int, default=128)
     parser.add_argument("--token_hidden_size", type=int, default=256)
@@ -36,7 +38,7 @@ def get_args():
     parser.add_argument("--max_token_length", type=int, default=100)
     parser.add_argument("--max_summary_length", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
-    parser.add_argument("--checkpoint", type=int, default="-1")
+    parser.add_argument("--checkpoint", type=int, default="49")
     parser.add_argument("--n_layers", type=int, default=1)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--num_workers", type=int, default=0)
@@ -76,49 +78,68 @@ def test(opt):
     checkpoint = torch.load(load_model_path)
     model.load_state_dict(checkpoint['model_state_dict'])
 
-    model.eval()
-    criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
-    # 测试模型
-    loss_test, bleu_test, acc_test = 0.0, 0.0, 0
-    n = 0
-    result = []
-    for te_file_summaries, te_repo_summary in tqdm(test_generator):
-        te_file_summaries = te_file_summaries.to(device)
-        te_repo_summary = te_repo_summary.to(device)
-        batch_size = te_repo_summary.size(0)
-        # print(batch_size)
-        outputs_test, preds_test = model.evaluation(te_file_summaries, te_repo_summary)
-        # print(preds_test)
-        # targets 的第一个 token 是 '<BOS>' 所以忽略
-        outputs_test = outputs_test[:, 1:].reshape(-1, outputs_test.size(2))
-        te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
-        loss = criterion(outputs_test, te_repo_summary)
-        loss_test += loss.item()
-        acc_test += torch.eq(outputs_test.argmax(1), te_repo_summary).float().mean().item() * batch_size
+    with torch.no_grad():
+        model.eval()
+        criterion = nn.CrossEntropyLoss(ignore_index=pad_token_id).to(device)
+        # 测试模型
+        loss_test, bleu_test, acc_test = 0.0, 0.0, 0
+        bleu_one, bleu_two, bleu_three, bleu_four = 0.0, 0.0, 0.0, 0.0
+        n = 0
+        n_token = 0
+        result = []
+        for te_file_summaries, te_repo_summary in tqdm(test_generator):
+            te_file_summaries = te_file_summaries.to(device)
+            te_repo_summary = te_repo_summary.to(device)
+            batch_size = te_repo_summary.size(0)
+            # print(batch_size)
+            outputs_test, preds_test = model.evaluation(te_file_summaries, te_repo_summary)
+            # print(preds_test)
+            # targets 的第一个 token 是 '<BOS>' 所以忽略
+            outputs_test = outputs_test[:, 1:].reshape(-1, outputs_test.size(2))
+            te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
+            loss = criterion(outputs_test, te_repo_summary)
+            loss_test += loss.item()
+            acc_test += torch.eq(outputs_test.argmax(1), te_repo_summary).float().mean().item() * te_repo_summary.size(0)
+            n_token += te_repo_summary.size(0)
 
-        # 将预测结果转为文字
-        te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
-        preds_val_result = []
-        for pred in preds_test:
-            preds_val_result.append(tokenizer.decode(pred.int().tolist()))
-        targets_result = []
-        for tgt in te_repo_summary:
-            targets_result.append(tokenizer.decode(tgt.int().tolist()))
+            # 将预测结果转为文字
+            te_repo_summary = te_repo_summary.view(te_file_summaries.size(0), -1)
+            preds_val_result = []
+            for pred in preds_test:
+                preds_val_result.append(tokenizer.decode(pred.int().tolist()))
+            targets_result = []
+            for tgt in te_repo_summary:
+                targets_result.append(tokenizer.decode(tgt.int().tolist()))
 
-        # 记录验证集结果
-        for pred, target in zip(preds_val_result, targets_result):
-            bleu_test += computebleu(pred, target)
-            result.append((pred, target))
-        n += batch_size
-    loss_test = loss_test / len(test_generator)
-    acc_test = acc_test / n
-    bleu_test = bleu_test / n
-    print('test loss: {}, bleu_score: {}, acc: {}'.format(loss_test, bleu_test, acc_test))
-    # 储存结果
-    with open(opt.output_path + '/test_pred.txt', 'w') as p, open(opt.output_path + '/test_tgt.txt', 'w') as t:
-        for line in result:
-            print(line[0], file=p)
-            print(line[1], file=t)
+            # 记录验证集结果
+            for pred, target in zip(preds_val_result, targets_result):
+                # 计算 Bleu Score
+                bleu_one += sentence_bleu([target.split()], pred.split(), weights=(1, 0, 0, 0))
+                bleu_two += sentence_bleu([target.split()], pred.split(), weights=(0, 1, 0, 0))
+                bleu_three += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 1, 0))
+                bleu_four += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 0, 1))
+                bleu_test += computebleu(pred, target)
+                result.append((pred, target))
+            n += batch_size
+        loss_test = loss_test / len(test_generator)
+        acc_test = acc_test / n_token
+        bleu_test = bleu_test / n
+        bleu_one = bleu_one / n
+        bleu_two = bleu_two / n
+        bleu_three = bleu_three / n
+        bleu_four = bleu_four / n
+        print('test loss: {}, Bleu1 {} Bleu2 {} Bleu3 {} Bleu4 {} Bleu4_score: {}, acc: {}'.format(
+            loss_test,
+            bleu_one,
+            bleu_two,
+            bleu_three,
+            bleu_four,
+            bleu_test, acc_test))
+        # 储存结果
+        with open(opt.output_path + '/test_pred.txt', 'w') as p, open(opt.output_path + '/test_tgt.txt', 'w') as t:
+            for line in result:
+                print(line[0], file=p)
+                print(line[1], file=t)
 
 
 if __name__ == "__main__":
