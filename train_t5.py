@@ -138,7 +138,7 @@ def train(opt):
     num_iter_per_epoch = len(training_generator)
     # total_steps = num_iter_per_epoch * opt.num_epoches
     # kk = np.argmin([np.abs(total_steps / 2 - x * np.log(x)) for x in range(1, total_steps)])
-    train_losses, val_acces, val_bleu_scores = [], [], []
+    train_losses, val_bleu_scores = [], []
     for epoch in range(opt.num_epoches):
         if epoch + 1 <= epoch_finished:
             print("###### Epoch {} has archived".format(epoch + 1))
@@ -178,9 +178,8 @@ def train(opt):
             with torch.no_grad():
                 model.eval()
 
-                bleu_val, acc_val = 0.0, 0
+                bleu_val = 0.0
                 n = 0
-                token_n = 0
                 result_val = []
                 for data in tqdm(valid_generator):
                     target_ids = data['target_ids'].to(device, dtype=torch.long)
@@ -195,11 +194,11 @@ def train(opt):
                         repetition_penalty=2.5,
                         length_penalty=1.0
                     )
-                    print(generated_ids.shape)
-                    print(target_ids.shape)
-                    accuracy = torch.eq(generated_ids.reshape(-1), target_ids.reshape(-1)).float().mean().item()
-                    acc_val += accuracy * target_ids.size(0) * target_ids.size(1)
-                    token_n += target_ids.size(0) * target_ids.size(1)
+                    # print(generated_ids.shape)
+                    # print(target_ids.shape)
+                    # accuracy = torch.eq(generated_ids.reshape(-1), target_ids.reshape(-1)).float().mean().item()
+                    # acc_val += accuracy * target_ids.size(0) * target_ids.size(1)
+                    # token_n += target_ids.size(0) * target_ids.size(1)
                     # print('generated_ids {}'.format(generated_ids))
                     preds = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=True) for g in
                              generated_ids]
@@ -212,8 +211,8 @@ def train(opt):
                         result_val.append((pred, target))
                     n += batch_size
                 bleu_val = bleu_val / n
-                acc_val = acc_val / token_n
-                val_acces.append(acc_val)
+                # acc_val = acc_val / token_n
+                # val_acces.append(acc_val)
                 val_bleu_scores.append(bleu_val)
                 # 储存结果
                 with open(bleu_path + os.sep + "valid_result_{}.txt".format(epoch + 1), 'w') as f:
@@ -222,13 +221,12 @@ def train(opt):
                 if bleu_val < best_bleu:
                     best_bleu = bleu_val
                     best_epoch = epoch
-                print("@@@@@@ Epoch Valid Test: {}/{}, Acc: {} Bleu-4 score: {}".format(
+                print("@@@@@@ Epoch Valid Test: {}/{}, Bleu-4 score: {}".format(
                     epoch + 1,
                     opt.num_epoches,
-                    acc_val,
                     bleu_val))
                 # writer.add_scalar('Valid/Loss', loss_val, epoch)
-                writer.add_scalar('Valid/Accuracy', acc_val, epoch)
+                # writer.add_scalar('Valid/Accuracy', acc_val, epoch)
                 writer.add_scalar('Valid/Bleu-4', bleu_val, epoch)
 
                 # 保存模型
@@ -249,14 +247,14 @@ def train(opt):
     plt.title('Train Loss')
     plt.savefig('./train_loss.png')
 
-    plt.figure(2)
-    plt.plot(range(1, len(val_acces) + 1), val_acces)
-    plt.xlabel('Epoch')
-    plt.ylabel('Acc')
-    plt.title('Valid Accuracy')
-    plt.savefig('./valid_acc.png')
+    # plt.figure(2)
+    # plt.plot(range(1, len(val_acces) + 1), val_acces)
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Acc')
+    # plt.title('Valid Accuracy')
+    # plt.savefig('./valid_acc.png')
 
-    plt.figure(3)
+    plt.figure(2)
     plt.plot(range(1, len(val_bleu_scores) + 1), val_bleu_scores)
     plt.xlabel('Epoch')
     plt.ylabel('Bleu-4 Score')
