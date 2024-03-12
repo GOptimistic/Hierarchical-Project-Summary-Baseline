@@ -163,7 +163,7 @@ def train(opt):
             optimizer.step()
             y = y[:, 1:]
             print(preds.shape, y.shape)
-            accuracy = torch.eq(preds.view(y.size(0) * y.size(1), -1).argmax(1), y.view(-1)).float().mean().item()
+            accuracy = torch.eq(preds.reshape(-1, preds.size(2)).argmax(1), y.reshape(-1)).float().mean().item()
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
                 epoch + 1,
                 opt.num_epoches,
