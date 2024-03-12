@@ -27,7 +27,7 @@ from tokenizer import MyTokenizer
 def get_args():
     parser = argparse.ArgumentParser(
         """Implementation of the model: Hierarchical Project Summary Baseline""")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--num_epoches", type=int, default=100)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--momentum", type=float, default=0.9)
@@ -48,8 +48,8 @@ def get_args():
     parser.add_argument("--log_path", type=str, default="./logs_t5")
     parser.add_argument("--saved_path", type=str, default="./trained_models_t5")
     # parser.add_argument("--repo_base_path", type=str, default="./data")
-    parser.add_argument("--max_token_length", type=int, default=600)
-    parser.add_argument("--max_summary_length", type=int, default=120)
+    parser.add_argument("--max_token_length", type=int, default=500)
+    parser.add_argument("--max_summary_length", type=int, default=100)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
     parser.add_argument("--n_layers", type=int, default=1)
@@ -146,7 +146,7 @@ def train(opt):
         print("###### Epoch {} start:".format(epoch + 1))
         iter_index = 0
         model.train()
-        for _, data in tqdm(enumerate(training_generator, 0), desc='step'):
+        for data in tqdm(training_generator, 0):
             iter_index = iter_index + 1
             y = data['target_ids'].to(device, dtype=torch.long)
             y_ids = y[:, :-1].contiguous()
@@ -162,7 +162,6 @@ def train(opt):
             loss.backward()
             optimizer.step()
             y = y[:, 1:]
-            print(preds.shape, y.shape)
             accuracy = torch.eq(preds.reshape(-1, preds.size(2)).argmax(1), y.reshape(-1)).float().mean().item()
             print("###### Epoch: {}/{}, Iteration: {}/{}, Lr: {}, Loss: {}, Accuracy: {}".format(
                 epoch + 1,
@@ -183,7 +182,7 @@ def train(opt):
                 n = 0
                 result_val = []
                 bleus = []
-                for _, data in tqdm(enumerate(valid_generator, 0), desc='Evaluate'):
+                for data in tqdm(valid_generator):
                     target_ids = data['target_ids'].to(device, dtype=torch.long)
                     ids = data['source_ids'].to(device, dtype=torch.long)
                     mask = data['source_mask'].to(device, dtype=torch.long)
