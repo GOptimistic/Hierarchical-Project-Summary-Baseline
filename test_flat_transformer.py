@@ -70,7 +70,7 @@ def test(opt):
                              opt.max_output_length,
                              tokenizer)
     test_generator = DataLoader(test_set, **test_params)
-    load_model_path = "./flat_result/model_{}.pt".format(opt.checkpoint)  # 读取模型位置
+    load_model_path = "./flat_result_trans/model_{}.pt".format(opt.checkpoint)  # 读取模型位置
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
