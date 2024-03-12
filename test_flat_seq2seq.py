@@ -124,7 +124,7 @@ def test(opt):
                 bleu_three += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 1, 0))
                 bleu_four += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 0, 1))
                 bleu_test += computebleu(pred, target)
-        loss_test = loss_test / len(test_generator)
+        loss_test = np.mean(loss_test)
         acc_test = acc_test / n_token
         bleu_test = bleu_test / n
         bleu_one = bleu_one / n
