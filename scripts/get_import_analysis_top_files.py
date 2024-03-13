@@ -206,7 +206,8 @@ def run_single_process(config, data_list, node_index):
     df = pd.DataFrame(result, columns=['repo_name', 'files_info', 'repo_summary'])
 
     # 写入CSV文件
-    df.to_csv(output_file_path, index=False)
+    df = df.applymap(replace_invalid_utf8_chars)
+    df.to_csv(output_file_path, sep=';', index=False, quoting=csv.QUOTE_NONNUMERIC, encoding='utf-8')
     end_time = time.time()
     print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time))
 
