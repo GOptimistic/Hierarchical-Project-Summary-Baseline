@@ -176,7 +176,7 @@ def analyze_single_project(root_dir, max_file_num):
 def run_single_process(config, data_list, node_index):
     start_time = time.time()
     with open(config.output_data_path + os.sep + 'data_{}_import_analyze_{}_{}.csv'.format(config.lang, config.start_part_index, node_index), 'w', newline='') as out_file:
-        csv_witer = csv.writer(out_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_witer = csv.writer(out_file, delimiter=',', quotechar='~', quoting=csv.QUOTE_MINIMAL)
         # head of csv
         csv_witer.writerow(['repo_name', 'files_info', 'repo_summary'])
 
