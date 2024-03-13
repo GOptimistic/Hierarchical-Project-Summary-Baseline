@@ -188,6 +188,7 @@ def run_single_process(config, data_list, node_index):
             try:
                 files_info = analyze_single_project(project_path, config.max_length_file)
                 if len(files_info.keys()) == 0:
+                    print('part {} node {} index {} is null'.format(config.start_part_index, node_index, i))
                     continue
                 csv_witer.writerow([full_name, json.dumps(files_info), summary])
             except TimeoutError as timeout_exception:
