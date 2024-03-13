@@ -1,3 +1,4 @@
+import re
 import time
 import functools
 import signal
@@ -174,10 +175,6 @@ def analyze_single_project(root_dir, max_file_num):
     return files_info
 
 
-def replace_invalid_utf8_chars(s):
-    return ''.join(char if len(char.encode('utf-8')) <= 3 else ' ' for char in s)
-
-
 def run_single_process(config, data_list, node_index):
     start_time = time.time()
     output_file_path = config.output_data_path + os.sep + 'data_{}_import_analyze_{}_{}.csv'.format(config.lang, config.start_part_index, node_index)
@@ -206,8 +203,7 @@ def run_single_process(config, data_list, node_index):
     df = pd.DataFrame(result, columns=['repo_name', 'files_info', 'repo_summary'])
 
     # 写入CSV文件
-    df = df.applymap(replace_invalid_utf8_chars)
-    df.to_csv(output_file_path, sep=';', index=False, quoting=csv.QUOTE_NONNUMERIC, encoding='utf-8')
+    df.to_csv(output_file_path, index=False)
     end_time = time.time()
     print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time))
 
@@ -217,7 +213,8 @@ def run_multi_process(config):
     df = pd.read_csv(config.csv_data_path, header=0)
     for index, row in df.iterrows():
         full_name = row[0]
-        summary = replace_invalid_utf8_chars(row[1])
+        summary = row[1]
+        summary = re.sub(r'[^\x00-\x7F]+', ' ', summary)
         repos_and_summaries.append((full_name, summary))
 
     print(len(repos_and_summaries))
