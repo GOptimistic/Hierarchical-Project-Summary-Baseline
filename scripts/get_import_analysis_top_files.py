@@ -165,9 +165,9 @@ def analyze_single_project(root_dir, max_file_num):
         method_signatures = package_methods_map[class_name]
         file_path = package_file_map[class_name]
         single_file_info = {
-            'in_degree': degree,
-            'file_path': file_path,
-            'method_signatures': method_signatures
+            "in_degree": degree,
+            "file_path": file_path,
+            "method_signatures": method_signatures
         }
         files_info[class_name] = single_file_info
 
@@ -176,7 +176,7 @@ def analyze_single_project(root_dir, max_file_num):
 def run_single_process(config, data_list, node_index):
     start_time = time.time()
     with open(config.output_data_path + os.sep + 'data_{}_import_analyze_{}_{}.csv'.format(config.lang, config.start_part_index, node_index), 'w', newline='') as out_file:
-        csv_witer = csv.writer(out_file)
+        csv_witer = csv.writer(out_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         # head of csv
         csv_witer.writerow(['repo_name', 'files_info', 'repo_summary'])
 
