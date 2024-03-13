@@ -165,9 +165,9 @@ def analyze_single_project(root_dir, max_file_num):
         method_signatures = package_methods_map[class_name]
         file_path = package_file_map[class_name]
         single_file_info = {}
-        single_file_info.in_degree = degree
-        single_file_info.file_path = file_path
-        single_file_info.method_signatures = method_signatures
+        single_file_info['in_degree'] = degree
+        single_file_info['file_path'] = file_path
+        single_file_info['method_signatures'] = method_signatures
         files_info[class_name] = single_file_info
 
     return files_info
