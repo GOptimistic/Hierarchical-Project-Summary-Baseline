@@ -9,6 +9,7 @@ import sys
 import javalang
 import os
 import networkx as nx
+import pandas as pd
 
 csv.field_size_limit(sys.maxsize)
 
@@ -174,48 +175,43 @@ def analyze_single_project(root_dir, max_file_num):
 
 def run_single_process(config, data_list, node_index):
     start_time = time.time()
-    with open(config.output_data_path + os.sep + 'data_{}_import_analyze_{}_{}.csv'.format(config.lang, config.start_part_index, node_index), 'w', newline='') as out_file:
-        csv_witer = csv.writer(out_file)
-        # head of csv
-        csv_witer.writerow(['repo_name', 'files_info', 'repo_summary'])
-
-        for i in range(len(data_list)):
-            data = data_list[i]
-            full_name = data[0]
-            summary = data[1]
-            project_path = config.repo_path + os.sep + full_name.replace('/', '_')
-            try:
-                files_info = analyze_single_project(project_path, config.max_length_file)
-                if len(files_info.keys()) == 0:
-                    print('part {} node {} index {} is null'.format(config.start_part_index, node_index, i))
-                    continue
-                csv_witer.writerow([full_name, json.dumps(files_info), summary])
-            except TimeoutError as timeout_exception:
-                print("Timeout ERROR: {}. part {} node {} index {}".format(str(timeout_exception), config.start_part_index, node_index, i))
+    output_file_path = config.output_data_path + os.sep + 'data_{}_import_analyze_{}_{}.csv'.format(config.lang, config.start_part_index, node_index)
+    result = []
+    for i in range(len(data_list)):
+        data = data_list[i]
+        full_name = data[0]
+        summary = data[1]
+        project_path = config.repo_path + os.sep + full_name.replace('/', '_')
+        try:
+            files_info = analyze_single_project(project_path, config.max_length_file)
+            if len(files_info.keys()) == 0:
+                print('part {} node {} index {} is null'.format(config.start_part_index, node_index, i))
                 continue
-            except Exception as e:
-                print("Unknown ERROR: {}. part {} node {} index {}".format(str(e), config.start_part_index, node_index, i))
-                continue
+            result.append([full_name, json.dumps(files_info), summary])
+        except TimeoutError as timeout_exception:
+            print("Timeout ERROR: {}. part {} node {} index {}".format(str(timeout_exception), config.start_part_index,
+                                                                       node_index, i))
+            continue
+        except Exception as e:
+            print("Unknown ERROR: {}. part {} node {} index {}".format(str(e), config.start_part_index, node_index, i))
+            continue
 
-            print('part {} node {} index {} done'.format(config.start_part_index, node_index, i))
+        print('part {} node {} index {} done'.format(config.start_part_index, node_index, i))
+    # 转换为DataFrame
+    df = pd.DataFrame(result, columns=['repo_name', 'files_info', 'repo_summary'])
 
+    # 写入CSV文件
+    df.to_csv(output_file_path, index=False)
     end_time = time.time()
     print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time))
 
 def run_multi_process(config):
     repos_and_summaries = []
-    index = 0
-    with open(config.csv_data_path, 'r') as in_file:
-        csv_reader = csv.reader(in_file)
-        for row in csv_reader:
-            if index == 0:
-                index = index + 1
-                continue
-            full_name = row[0]
-            summary = row[1]
-            repos_and_summaries.append((full_name, summary))
-            # print((full_name, summary))
-            index = index + 1
+    df = pd.read_csv(config.csv_data_path, header=0)
+    for index, row in df.iterrows():
+        full_name = row[0]
+        summary = row[1]
+        repos_and_summaries.append((full_name, summary))
 
     print(len(repos_and_summaries))
     processes = []
