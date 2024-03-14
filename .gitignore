@@ -9,6 +9,8 @@ trained_models_bak/
 logs_three/
 trained_models_three_level/
 *.log
+*.out
+*.err
 screenlog.0
 *.csv
 __pycache__/
