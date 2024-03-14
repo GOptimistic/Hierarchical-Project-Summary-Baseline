@@ -3,8 +3,9 @@ import glob
 import json
 from sklearn.model_selection import train_test_split
 import numpy as np
+import re
 
-
+filter_pattern = r'archived|deprecated|unmaintained|unsupported'
 file_length = []
 flat_input_length = []
 max_file_num = 30
@@ -97,14 +98,19 @@ def handle_csv():
         for index, row in df.iterrows():
             repo_name = row['repo_name']
             files_info = row['files_info']
-            repo_summary = row['repo_summary']
+            repo_summary = ' '.join(row['repo_summary'].split())
             flat_result_list.append([repo_name, get_project_flat_input(repo_name, files_info), repo_summary])
             row['files_info'] = handle_files_info(files_info)
-        data_frames.append(df)
+        filtered_df = df[
+            ~df['repo_summary'].str.contains('\$', regex=True) & ~df['repo_summary'].str.contains(filter_pattern,
+                                                                                                  flags=re.IGNORECASE,
+                                                                                                  regex=True)]
+        data_frames.append(filtered_df)
 
     # 合并所有DataFrame
     combined_df = pd.concat(data_frames, ignore_index=True)
-    combined_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_all.csv', index=False)
+    combined_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_all.csv',
+                       index=False)
     print(len(combined_df))
     # 划分数据集
     train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
@@ -114,15 +120,18 @@ def handle_csv():
     print(len(valid_df))
     print(len(test_df))
 
-    train_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_train.csv', index=False)
-    valid_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_valid.csv', index=False)
-    test_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_test.csv', index=False)
+    train_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_train.csv',
+                    index=False)
+    valid_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_valid.csv',
+                    index=False)
+    test_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_test.csv',
+                   index=False)
 
     # 处理flat_input
     # 转换为DataFrame
     flat_df = pd.DataFrame(flat_result_list, columns=['repo_name', 'flat_input', 'repo_summary'])
     flat_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_flat_input.csv',
-                       index=False)
+                   index=False)
     print(len(flat_df))
     # 划分数据集
     flat_train_df, flat_temp_df = train_test_split(flat_df, test_size=0.2, random_state=42)
