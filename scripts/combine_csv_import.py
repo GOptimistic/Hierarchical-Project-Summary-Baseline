@@ -101,6 +101,7 @@ def handle_csv():
             repo_summary = ' '.join(row['repo_summary'].split())
             flat_result_list.append([repo_name, get_project_flat_input(repo_name, files_info), repo_summary])
             row['files_info'] = handle_files_info(files_info)
+            row['repo_summary'] = repo_summary
         filtered_df = df[
             ~df['repo_summary'].str.contains('\$', regex=True) & ~df['repo_summary'].str.contains(filter_pattern,
                                                                                                   flags=re.IGNORECASE,
