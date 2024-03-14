@@ -113,23 +113,27 @@ def handle_csv():
                        index=False)
     print(len(combined_df))
     # 划分数据集
-    train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
-    print(len(train_df))
-
-    valid_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=56)
-    print(len(valid_df))
-    print(len(test_df))
-
-    train_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_train.csv',
-                    index=False)
-    valid_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_valid.csv',
-                    index=False)
-    test_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_test.csv',
-                   index=False)
+    # train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
+    # print(len(train_df))
+    #
+    # valid_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=56)
+    # print(len(valid_df))
+    # print(len(test_df))
+    #
+    # train_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_train.csv',
+    #                 index=False)
+    # valid_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_valid.csv',
+    #                 index=False)
+    # test_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_test.csv',
+    #                index=False)
 
     # 处理flat_input
     # 转换为DataFrame
     flat_df = pd.DataFrame(flat_result_list, columns=['repo_name', 'flat_input', 'repo_summary'])
+    flat_df = flat_df[
+        ~df['repo_summary'].str.contains('\$', regex=True) & ~df['repo_summary'].str.contains(filter_pattern,
+                                                                                              flags=re.IGNORECASE,
+                                                                                              regex=True)]
     flat_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_flat_input.csv',
                    index=False)
     print(len(flat_df))
