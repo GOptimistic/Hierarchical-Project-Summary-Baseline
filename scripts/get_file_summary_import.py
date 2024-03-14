@@ -73,7 +73,7 @@ def get_single_project_file_summary(repo_name, files_info, model, tokenizer, max
         files_info_items = sorted(files_info_items, key=lambda x: x[1]["degree"], reverse=True)[:max_length_file]
     for file_name, file_info in files_info_items:
         file_path = file_info['path']
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             code_text = f.read()
 
         question = 'Please help me write a one-sentence summary of the java class file {} from the open-source project named {}. The summary should capture the overall functionality of the file in no longer than 30 words, without describing each function individually. The code is\n\n'.format(
@@ -96,7 +96,7 @@ def run_single_process(config, data_list, node_index):
     print(device)
     model.to(device)
     model = model.eval()
-    with open(config.output_data_path + os.sep + 'data_import_file_summary_{}_{}.csv'.format(config.start_part_index, node_index), 'w', newline='') as out_file:
+    with open(config.output_data_path + os.sep + 'data_import_file_summary_{}_{}.csv'.format(config.start_part_index, node_index), 'w', newline='', encoding='utf-8') as out_file:
         csv_witer = csv.writer(out_file)
         # head of csv
         csv_witer.writerow(['repo_name', 'file_summaries', 'repo_summary'])
@@ -136,7 +136,7 @@ def run_single_process(config, data_list, node_index):
 def run_multi_process(config):
     repos_and_summaries = []
     index = 0
-    with open(config.csv_data_path, 'r') as in_file:
+    with open(config.csv_data_path, 'r', encoding='utf-8') as in_file:
         csv_reader = csv.reader(in_file)
         for row in csv_reader:
             if index == 0:
