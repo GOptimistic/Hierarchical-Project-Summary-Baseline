@@ -2,27 +2,12 @@ import pandas as pd
 import glob
 import json
 from sklearn.model_selection import train_test_split
-import re
-import inflect
-from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.corpus import wordnet
-from nltk import word_tokenize, pos_tag
-from nltk.stem.porter import PorterStemmer
 import numpy as np
 
 
 file_length = []
 flat_input_length = []
 max_file_num = 30
-
-
-def to_digit(digit):
-    i = inflect.engine()
-    if digit.isdigit():
-        output = i.number_to_words(digit)
-    else:
-        output = digit
-    return output
 
 
 #   处理文件信息，将方法签名去掉，只保留package名、degree和对应的路径
