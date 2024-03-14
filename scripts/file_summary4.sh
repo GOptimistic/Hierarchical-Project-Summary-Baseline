@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置作业的名称、输出文件等
-#SBATCH --job-name="fileSummary4"
+#SBATCH --job-name="file4"
 #SBATCH --output="./sbatch/fileSummary/%j.out"
 #SBATCH --error="./sbatch/fileSummary/%j.err"
 #SBATCH --gres=gpu:4
