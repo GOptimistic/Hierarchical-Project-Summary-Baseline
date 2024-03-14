@@ -98,8 +98,8 @@ def handle_csv():
             repo_name = row['repo_name']
             files_info = row['files_info']
             repo_summary = row['repo_summary']
-            flat_result_list.append([repo_name, get_project_flat_input(files_info), repo_summary])
-            row['files_info'] = handle_files_info(repo_name, files_info)
+            flat_result_list.append([repo_name, get_project_flat_input(repo_name, files_info), repo_summary])
+            row['files_info'] = handle_files_info(files_info)
         data_frames.append(df)
 
     # 合并所有DataFrame
