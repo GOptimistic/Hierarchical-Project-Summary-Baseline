@@ -99,8 +99,7 @@ def handle_csv():
             repo_name = row['repo_name']
             files_info = row['files_info']
             repo_summary = ' '.join(row['repo_summary'].split())
-            if not re.match(r'\$', repo_summary) and not re.match(filter_pattern, repo_summary, flags=re.IGNORECASE):
-                flat_result_list.append([repo_name, get_project_flat_input(repo_name, files_info), repo_summary])
+            flat_result_list.append([repo_name, get_project_flat_input(repo_name, files_info), repo_summary])
             row['files_info'] = handle_files_info(files_info)
             row['repo_summary'] = repo_summary
         filtered_df = df[
@@ -132,6 +131,10 @@ def handle_csv():
     # 处理flat_input
     # 转换为DataFrame
     flat_df = pd.DataFrame(flat_result_list, columns=['repo_name', 'flat_input', 'repo_summary'])
+    flat_df = flat_df[
+        ~flat_df['repo_summary'].str.contains('\$', regex=True) & ~flat_df['repo_summary'].str.contains(filter_pattern,
+                                                                                              flags=re.IGNORECASE,
+                                                                                              regex=True)]
     flat_df.to_csv('/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_flat_input.csv',
                    index=False)
     print(len(flat_df))
