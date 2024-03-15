@@ -57,6 +57,8 @@ def get_args():
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--csv_data_path", type=str, default="/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/import_analyze_all.csv")
     parser.add_argument("--output_data_path", type=str, default="/home/LAB/guanz/gz_graduation/model_file_summary/analyze_import_data/file_summary_data")
+    parser.add_argument("--log_path", type=str,
+                        default="/home/LAB/guanz/gz_graduation/model_file_summary/scripts/logs")
     parser.add_argument("--max_length_file", type=int, default=50)
 
     args = parser.parse_args()
@@ -87,50 +89,51 @@ def get_single_project_file_summary(repo_name, files_info, model, tokenizer, max
         file_summaries[file_name] = response
     return file_summaries
 
-def run_single_process(config, data_list, node_index):
+def run_single_process(config, data_list, start_index, node_index):
     start_time = time.time()
     model_path = config.model_path
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_path, trust_remote_code=True).half()
     device = "cuda:{}".format(node_index)
-    print(device)
-    model.to(device)
-    model = model.eval()
-    with open(config.output_data_path + os.sep + 'data_import_file_summary_{}_{}.csv'.format(config.start_part_index, node_index), 'w', newline='', encoding='utf-8') as out_file:
-        csv_witer = csv.writer(out_file)
-        # head of csv
-        csv_witer.writerow(['repo_name', 'file_summaries', 'repo_summary'])
+    with open(config.log_path + os.sep + '{}_{}.txt'.format(start_index, node_index), 'w') as f:
+        print(device, file=f, flush=True)
+        model.to(device)
+        model = model.eval()
+        with open(config.output_data_path + os.sep + 'data_import_file_summary_{}_{}.csv'.format(config.start_part_index, node_index), 'w', newline='', encoding='utf-8') as out_file:
+            csv_witer = csv.writer(out_file)
+            # head of csv
+            csv_witer.writerow(['repo_name', 'file_summaries', 'repo_summary'])
 
-        for i in range(len(data_list)):
-            repo_name, files_info, repo_summary = data_list[i]
-            try:
-                file_summaries = get_single_project_file_summary(repo_name, files_info, model, tokenizer, config.max_length_file)
-                if len(file_summaries.keys()) == 0:
-                    print('part {} node {} index {} is null'.format(config.start_part_index, node_index, i))
+            for i in range(len(data_list)):
+                repo_name, files_info, repo_summary = data_list[i]
+                try:
+                    file_summaries = get_single_project_file_summary(repo_name, files_info, model, tokenizer, config.max_length_file)
+                    if len(file_summaries.keys()) == 0:
+                        print('part {} node {} index {} is null'.format(config.start_part_index, node_index, i), file=f, flush=True)
+                        continue
+                    csv_witer.writerow([repo_name, json.dumps(file_summaries), repo_summary])
+                except RuntimeError as runtime_exception:
+                    if "CUDA out of memory" in str(runtime_exception):
+                        print("ERROR: out of memory. part {} node {} index {}".format(config.start_part_index, node_index, i), file=f, flush=True)
+                        if hasattr(torch.cuda, 'empty_cache'):
+                            with torch.cuda.device(device):
+                                torch.cuda.empty_cache()
+                        continue
+                    else:
+                        print(
+                            "Runtime ERROR: {}. part {} node {} index {}".format(str(runtime_exception), config.start_part_index, node_index, i), file=f, flush=True)
+                        continue
+                except TimeoutError as timeout_exception:
+                    print("Timeout ERROR: {}. part {} node {} index {}".format(str(timeout_exception), config.start_part_index, node_index, i), file=f, flush=True)
                     continue
-                csv_witer.writerow([repo_name, json.dumps(file_summaries), repo_summary])
-            except RuntimeError as runtime_exception:
-                if "CUDA out of memory" in str(runtime_exception):
-                    print("ERROR: out of memory. part {} node {} index {}".format(config.start_part_index, node_index, i))
-                    if hasattr(torch.cuda, 'empty_cache'):
-                        with torch.cuda.device(device):
-                            torch.cuda.empty_cache()
+                except Exception as e:
+                    print("Unknown ERROR: {}. part {} node {} index {}".format(str(e), config.start_part_index, node_index, i), file=f, flush=True)
                     continue
-                else:
-                    print(
-                        "Runtime ERROR: {}. part {} node {} index {}".format(str(runtime_exception), config.start_part_index, node_index, i))
-                    continue
-            except TimeoutError as timeout_exception:
-                print("Timeout ERROR: {}. part {} node {} index {}".format(str(timeout_exception), config.start_part_index, node_index, i))
-                continue
-            except Exception as e:
-                print("Unknown ERROR: {}. part {} node {} index {}".format(str(e), config.start_part_index, node_index, i))
-                continue
 
-            print('part {} node {} index {} done'.format(config.start_part_index, node_index, i))
+                print('part {} node {} index {} done'.format(config.start_part_index, node_index, i), file=f, flush=True)
 
-    end_time = time.time()
-    print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time))
+        end_time = time.time()
+        print('###### Process {} has done. Use {}s'.format(node_index, end_time - start_time), file=f, flush=True)
 
 
 def run_multi_process(config):
@@ -157,7 +160,7 @@ def run_multi_process(config):
         print('process {} start {} end {}'.format(i, start_index, end_index))
         if end_index > len(repos_and_summaries):
             end_index = len(repos_and_summaries)
-        processes.append(Process(target=run_single_process, args=(config, repos_and_summaries[start_index:end_index], i,)))
+        processes.append(Process(target=run_single_process, args=(config, repos_and_summaries[start_index:end_index], config.start_part_index, i,)))
     [p.start() for p in processes]  # 开启进程
     [p.join() for p in processes]  # 等待进程依次结束
 
