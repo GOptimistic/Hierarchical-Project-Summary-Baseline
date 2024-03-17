@@ -11,17 +11,11 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration
 import matplotlib.pyplot as plt
 
 from dataset_t5 import MyDatasetFileSummaryT5
-from src.model.Summary_Two_Level import SummaryTwoLevel
 from src.utils import schedule_sampling, computebleu
-from dataset import MyDataset
 from tensorboardX import SummaryWriter
 import argparse
 import shutil
-import numpy as np
 from tqdm import tqdm
-from torchinfo import summary as infoSummary
-
-from tokenizer import MyTokenizer
 
 
 def get_args():
