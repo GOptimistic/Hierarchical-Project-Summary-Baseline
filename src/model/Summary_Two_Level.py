@@ -12,13 +12,12 @@ class SummaryTwoLevel(nn.Module):
         super(SummaryTwoLevel, self).__init__()
         self.encoder = HierAttEncoderTwoLevel(opt.token_hidden_size,
                                               opt.file_hidden_size,
-                                              opt.package_hidden_size,
                                               opt.decoder_hidden_size,
                                               opt.embedding_size,
                                               opt.dropout,
                                               opt.vocab_size,
                                               pad_id)
-        self.decoder = GruDecoder(opt.package_hidden_size,
+        self.decoder = GruDecoder(opt.file_hidden_size,
                                   opt.decoder_hidden_size,
                                   opt.dropout,
                                   opt.embedding_size,
@@ -27,7 +26,7 @@ class SummaryTwoLevel(nn.Module):
         self.device = device
 
     def forward(self, file_summaryies, repo_summary, teacher_forcing_ratio):
-        # file_summaryies (batch_size, package_size, file_size, token_size),两层循环得到三维向量
+        # file_summaryies (batch_size, file_size, token_size)
         # repo_summary = [batch size, max_length_summary]
         # teacher_forcing_ratio 是使用正解训练的概率
         batch_size = repo_summary.shape[0]

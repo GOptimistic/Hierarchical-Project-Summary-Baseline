@@ -10,12 +10,13 @@ from src.utils import matrix_mul, element_wise_mul, masked_softmax
 
 
 class FileAttNet(nn.Module):
-    def __init__(self, file_hidden_size=128, token_hidden_size=128, dropout=0.5):
+    def __init__(self, file_hidden_size=128, token_hidden_size=128, decoder_hidden_size=128, dropout=0.5):
         super(FileAttNet, self).__init__()
 
         self.rnn = nn.GRU(token_hidden_size * 2, file_hidden_size, batch_first=True,
                           bidirectional=True)
         self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(file_hidden_size * 2, decoder_hidden_size)
         # self.fc = nn.Linear(file_hidden_size * 2, file_hidden_size * 2)
         # self.file_attention = NormalAttention(file_hidden_size)
 
@@ -26,17 +27,12 @@ class FileAttNet(nn.Module):
         # 因为 Encoder 是双向RNN，所以需要对同一层两个方向的 hidden state 进行拼接
         # s = [batch_size, file_hidden_size * 2]
         s = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
-        # s = torch.tanh(self.fc(s))
+        # s = [batch_size, decoder_hidden_size]
+        s = torch.tanh(self.fc(s))
 
         # outputs [batch_size, file_size, 2*file_hidden_size]
-        # s = [num_layers, batch_size, file_hidden_size * 2]
-
-        # a = [batch_size, 1, file_size]
-        # a = self.file_attention(outputs, s).unsqueeze(1)
-        # package_embedding = torch.bmm(a, outputs)
-        # # package_embedding [batch_size, 1, 2*file_hidden_size]
-        # return package_embedding
-        return s.unsqueeze(1)
+        # s = [batch_size, decoder_hidden_size]
+        return outputs, s
 
 
 if __name__ == "__main__":

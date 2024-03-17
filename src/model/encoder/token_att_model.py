@@ -3,10 +3,6 @@
 """
 import torch
 import torch.nn as nn
-from transformers import AutoModel
-
-from src.model.attention.NormalAttention import NormalAttention
-from src.utils import matrix_mul, element_wise_mul, masked_softmax
 
 
 

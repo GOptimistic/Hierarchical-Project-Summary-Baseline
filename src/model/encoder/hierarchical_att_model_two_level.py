@@ -13,45 +13,33 @@ from src.model.encoder.package_att_model import PackageAttNet
 
 
 class HierAttEncoderTwoLevel(nn.Module):
-    def __init__(self, token_hidden_size, file_hidden_size, package_hidden_size, decoder_hidden_size,
+    def __init__(self, token_hidden_size, file_hidden_size, decoder_hidden_size,
                  embedding_size, dropout, vocab_size, pad_id):
         super(HierAttEncoderTwoLevel, self).__init__()
 
         self.token_att_net = TokenAttNet(vocab_size, token_hidden_size, embedding_size, dropout, pad_id)
-
-        self.file_att_net = FileAttNet(file_hidden_size, token_hidden_size, dropout)
-        self.package_att_net = PackageAttNet(package_hidden_size, file_hidden_size, decoder_hidden_size, dropout)
+        self.file_att_net = FileAttNet(file_hidden_size, token_hidden_size, decoder_hidden_size, dropout)
 
     def forward(self, file_summaryies):
-        # file_summaryies (batch_size, package_size, file_size, token_size)
-        package_input = file_summaryies.permute(1, 2, 0, 3)
-        package_embedding_list = []
-        for file_input in package_input:
-            # file_input (file_size, batch_size, token_size)
-            file_embedding_list = []
-            for token_input in file_input:
-                # token_input[batch_size, token_size]
-                # print('token_input')
-                # print(token_input)
-                file_embedding = self.token_att_net(token_input)
-                # print('file_embedding')
-                # print(file_embedding)
-                # file_embedding [batch_size, 1, 2*token_hidden_size]
-                file_embedding_list.append(file_embedding)
-            # 将file_embedding拼接送入file层输入
-            file_embedding_list = torch.cat(file_embedding_list, 1)
-            # package_embedding [batch_size, 1, 2*file_hidden_size]
-            package_embedding = self.file_att_net(file_embedding_list)
-            # print('package_embedding')
-            # print(package_embedding)
-            package_embedding_list.append(package_embedding)
-        # 将package_embedding拼接送入package输入
-        package_embedding_list = torch.cat(package_embedding_list, 1)
-        package_outputs, package_hidden = self.package_att_net(package_embedding_list)
+        # file_summaryies (batch_size, file_size, token_size)
+        file_summaryies = file_summaryies.permute(1, 0, 2)
+        file_embedding_list = []
+        for token_input in file_summaryies:
+            # token_input[batch_size, token_size]
+            # print('token_input')
+            # print(token_input)
+            # file_embedding [batch_size, 1, 2*token_hidden_size]
+            file_embedding = self.token_att_net(token_input)
+            # print('file_embedding')
+            # print(file_embedding)
+            file_embedding_list.append(file_embedding)
+        # 将file_embedding拼接送入file层输入
+        file_embedding_list = torch.cat(file_embedding_list, 1)
+        # file_outputs [batch_size, file_size, 2*file_hidden_size]
+        # file_hidden = [batch_size, decoder_hidden_size]
+        file_outputs, file_hidden = self.file_att_net(file_embedding_list)
 
-        # package_outputs [batch_size, package_size, 2*package_hidden_size]
-        # package_hidden = [batch_size, decoder_hidden_size]
-        return package_outputs, package_hidden
+        return file_outputs, file_hidden
 
 
 if __name__ == '__main__':
