@@ -56,7 +56,7 @@ def test(opt):
     test_params = {"batch_size": opt.batch_size,
                    "shuffle": False,
                    "drop_last": False}
-    test_set = MyDataset(opt.test_data_path, opt.max_package_length, opt.max_file_length, opt.max_token_length,
+    test_set = MyDataset(opt.test_data_path, opt.max_file_length, opt.max_token_length,
                           opt.max_summary_length, tokenizer)
     test_generator = DataLoader(test_set, num_workers=opt.num_workers, **test_params)
     if os.path.isdir(opt.output_path):

@@ -90,10 +90,10 @@ def train(opt):
                     "shuffle": False,
                     "drop_last": False}
 
-    training_set = MyDataset(opt.train_data_path, opt.max_package_length, opt.max_file_length, opt.max_token_length,
+    training_set = MyDataset(opt.train_data_path, opt.max_file_length, opt.max_token_length,
                              opt.max_summary_length, tokenizer)
     training_generator = DataLoader(training_set, num_workers=opt.num_workers, **training_params)
-    valid_set = MyDataset(opt.valid_data_path, opt.max_package_length, opt.max_file_length, opt.max_token_length,
+    valid_set = MyDataset(opt.valid_data_path, opt.max_file_length, opt.max_token_length,
                              opt.max_summary_length, tokenizer)
     valid_generator = DataLoader(valid_set, num_workers=opt.num_workers, **valid_params)
 
