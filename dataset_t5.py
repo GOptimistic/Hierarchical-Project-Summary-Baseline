@@ -35,7 +35,7 @@ class MyDatasetFileSummaryT5(Dataset):
                     continue
                 repo_name = row[0].split('/')[1]
                 file_summary = row[1]
-                file_summary = 'Give a brief summary about the code project {} based the json {}'.format(repo_name, file_summary)
+                file_summary = 'Give a brief summary about the code project {} based the file summaries json {}'.format(repo_name, file_summary)
                 # # 去掉非数字字母空格符号，比如标点
                 # file_summary = re.sub(r'[^\w\s]', ' ', file_summary)
                 # # 处理下划线

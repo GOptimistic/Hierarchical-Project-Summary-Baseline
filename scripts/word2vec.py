@@ -6,15 +6,13 @@ import json
 def handle_file_summaries_rwo(file_summaries):
     file_summaries_object = json.loads(file_summaries)
     result = []
-    for package in file_summaries_object.keys():
-        package_info = file_summaries_object[package]
-        for file in package_info.keys():
-            file_summary = package_info[file]
-            result += file_summary.split()
+    for file in file_summaries_object.keys():
+        file_summary = file_summaries_object[file]
+        result += file_summary.split()
     return result
 
 # df = pd.read_csv('./data/mini_all.csv')
-df = pd.read_csv('./src/file_summary_data/mini_all.csv')
+df = pd.read_csv('/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/file_summary_data/analyze_import_data/file_summary_all.csv')
 df.head()
 SOS = '<sos>'
 PAD = '<pad>'
@@ -27,7 +25,7 @@ print(len(sent_file_summary))
 print(len(sent_repo_summary))
 sent = sent_file_summary + sent_repo_summary
 print(len(sent))
-model = Word2Vec(sent, min_count=1, vector_size=128, workers=3, window=5, sg=1)
+model = Word2Vec(sent, min_count=2, vector_size=128, workers=3, window=5, sg=1)
 # print(model.wv[SOS])
 print(len(model.wv.index_to_key))
 
@@ -37,5 +35,5 @@ for i in range(len(index_to_key)):
     vocab[index_to_key[i]] = i
 
 json_str = json.dumps(vocab)
-with open('./w2v_vocab.json', 'w') as f:
+with open('./w2v_vocab_import.json', 'w') as f:
     f.write(json_str)

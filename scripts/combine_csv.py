@@ -14,6 +14,8 @@ lemmatizer = WordNetLemmatizer()
 porter_stemmer = PorterStemmer()
 file_summary_length = []
 repo_summary_length = []
+file_length = []
+
 
 def get_wordnet_pos(treebank_tag):
     if treebank_tag.startswith('J'):
@@ -73,18 +75,16 @@ def process_token(str):
 # 处理文件摘要
 def handle_file_summaries(repo_name, file_summaries):
     global file_summary_length
+    global file_length
     repo_name = repo_name.split('/')[1]
     file_summaries_object = json.loads(file_summaries)
-
-    for package in file_summaries_object.keys():
-        package_info = file_summaries_object[package]
-        for file in package_info.keys():
-            file_summary = package_info[file]
-            # 加上package和file的信息
-            file_summary = 'project {} package {} file {} summary {} '.format(repo_name, package, file, file_summary)
-            package_info[file] = process_token(file_summary)
-            file_summary_length.append(len(package_info[file]))
-        file_summaries_object[package] = package_info
+    file_length.append(len(file_summaries_object.keys()))
+    for file in file_summaries_object.keys():
+        file_summary = file_summaries_object[file]
+        # 加上package和file的信息
+        file_summary = 'project {} file {} summary {} '.format(repo_name, file.split('.')[-1], file_summary)
+        file_summaries_object[file] = process_token(file_summary)
+        file_summary_length.append(len(file_summaries_object[file].split()))
     return json.dumps(file_summaries_object)
 
 
@@ -92,7 +92,7 @@ def handle_file_summaries(repo_name, file_summaries):
 def handle_repo_summary(repo_summary):
     global repo_summary_length
     res = process_token(repo_summary)
-    repo_summary_length.append(len(res))
+    repo_summary_length.append(len(res.split()))
     return res
 
 
@@ -123,7 +123,7 @@ def print_data_status(data):
 
 def handle_csv():
     # 设置包含CSV文件的目录路径
-    csv_files_path = './file_data_java_test/*.csv'  # 请替换为你的CSV文件所在目录
+    csv_files_path = '/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/file_summary_data/analyze_import_data/file_summary_data/*.csv'  # 请替换为你的CSV文件所在目录
 
     # 使用glob找到所有的csv文件
     csv_files = glob.glob(csv_files_path)
@@ -145,19 +145,19 @@ def handle_csv():
     # 合并所有DataFrame
     combined_df = pd.concat(data_frames, ignore_index=True)
     # combined_df = combined_df.drop('repo_name', axis=1)
-    combined_df.to_csv('./mini_all.csv', index=False)
+    combined_df.to_csv('/Users/guanzheng/cls_work/graduation_model/Hierarchical-Project-Summary-Baseline/src/file_summary_data/analyze_import_data/file_summary_all.csv', index=False)
     print(len(combined_df))
     # 划分数据集
-    train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
-    print(len(train_df))
-
-    valid_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=56)
-    print(len(valid_df))
-    print(len(test_df))
-
-    train_df.to_csv('./mini_train_one_level.csv', index=False)
-    valid_df.to_csv('./mini_valid_one_level.csv', index=False)
-    test_df.to_csv('./mini_test_one_level.csv', index=False)
+    # train_df, temp_df = train_test_split(combined_df, test_size=0.2, random_state=42)
+    # print(len(train_df))
+    #
+    # valid_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=56)
+    # print(len(valid_df))
+    # print(len(test_df))
+    #
+    # train_df.to_csv('../src/file_summary_data/analyze_import_data/file_summary_train.csv', index=False)
+    # valid_df.to_csv('../src/file_summary_data/analyze_import_data/file_summary_valid.csv', index=False)
+    # test_df.to_csv('../src/file_summary_data/analyze_import_data/file_summary_test.csv', index=False)
 
 if __name__ == '__main__':
     # file_summary = '{"ch.qos.logback.core.sift": {"SiftingJoranConfiguratorBase.java": "This Java code snippet is from the logback-android project and is used to configure and manage appenders within a logback configuration file. It includes methods for adding implicit rules, instance rules, checking for only one appender within a <sift> element, and configuring the logback system.", "DefaultDiscriminator.java": "The DefaultDiscriminator.java file contains two methods: getDiscriminatingValue and getKey, both of which return the constant value DEFAULT. These methods are used to provide default values when processing log events in the logback-android project.", "AbstractAppenderFactoryUsingJoran.java": "This Java code snippet defines a factory for creating log appenders in the logback-android project. It includes functions to remove a specified element from a list of events, retrieve the list of events, and build an appender using a configuration.", "SiftingAppenderBase.java": "This Java code snippet is a base class for log appenders, providing methods for setting and getting configuration parameters, starting and stopping the log appender, and appending events to the log. It also includes methods for getting the timestamp of an event and determining if an event marks the end of life.", "AbstractDiscriminator.java": "The AbstractDiscriminator.java file provides utility functions for starting and stopping a discriminator and checking if it is started."}, "ch.qos.logback.core.hook": {"DefaultShutdownHook.java": "This code snippet defines a DefaultShutdownHook class that provides a delay before shutting down the system. It has methods to get, set, and run the delay, and it sleeps for the specified duration before stopping the system.", "ShutdownHookBase.java": "The code snippet in ShutdownHookBase.java is a shutdown hook function that stops the Logback context by calling the stop() method on the context object, which is an instance of ContextBase. The function also adds an info message to indicate that the context is being closed via a shutdown hook."}, "ch.qos.logback.core.helpers": {"NOPAppender.java": "The code snippet is a method in the NOPAppender class, which implements an appender that does not write any events to the log file. It takes an event object as input and does not perform any action on it.", "ThrowableToStringArray.java": "This Java code snippet provides a function called `convert()` that converts a `Throwable` object into a String array. It uses helper functions `extract()` and `formatFirstLine()` to format the first line of the stack trace and to find the number of common frames between the current stack trace and the parent stack trace, respectively. The `extract()` function then adds the formatted first line and common frames to a `String` list, which is returned as a String array.", "Transform.java": "This Java code snippet provides functions for handling XML tags in strings, including escaping characters that need to be replaced with their HTML entities, such as ampersand, less than, greater than, and double quotes. The functions include `escapeTags`, `escapeTags` (for a StringBuffer), `appendEscapingCDATA`, and `appendEscapingCDATA`.", "CyclicBuffer.java": "This Java code snippet implements a circular buffer, which can grow or shrink dynamically to accommodate incoming elements. It provides methods to add, get, and get the maximum size of elements, and it can also convert the buffer to a list of elements."}}'
@@ -169,3 +169,5 @@ if __name__ == '__main__':
     print_data_status(file_summary_length)
     print('###### Repo summary level')
     print_data_status(repo_summary_length)
+    print('###### File level')
+    print_data_status(file_length)
