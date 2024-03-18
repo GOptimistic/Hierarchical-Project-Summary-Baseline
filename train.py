@@ -4,6 +4,7 @@
 import os
 import torch
 import torch.nn as nn
+from nltk.translate.bleu_score import sentence_bleu
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
 
@@ -150,9 +151,12 @@ def train(opt):
             file_summaries = file_summaries.to(device)
             repo_summary = repo_summary.to(device)
             optimizer.zero_grad()
+            # outputs, preds = model(file_summaries,
+            #                        repo_summary,
+            #                        schedule_sampling(epoch * num_iter_per_epoch + iter_index, total_steps, c=0, k=kk))
             outputs, preds = model(file_summaries,
                                    repo_summary,
-                                   schedule_sampling(epoch * num_iter_per_epoch + iter_index, total_steps, c=0, k=kk))
+                                   1.0)
             # 将向量变成[batch_size*max_length_summary, vocab_size]方便计算损失值，可参考torch官方api文档
             # 第一个 token 是 '<BOS>' 所以忽略
             outputs = outputs[:, 1:].reshape(-1, outputs.size(2))
@@ -180,7 +184,9 @@ def train(opt):
                 model.eval()
 
                 loss_val, bleu_val, acc_val = 0.0, 0.0, 0
+                bleu_one, bleu_two, bleu_three, bleu_four = 0.0, 0.0, 0.0, 0.0
                 n = 0
+                n_token = 0
                 result_val = []
                 for te_file_summaries, te_repo_summary in tqdm(valid_generator):
                     te_file_summaries = te_file_summaries.to(device)
@@ -193,7 +199,8 @@ def train(opt):
                     te_repo_summary = te_repo_summary[:, 1:].reshape(-1)
                     loss = criterion(outputs_val, te_repo_summary)
                     loss_val += loss.item()
-                    acc_val += torch.eq(outputs_val.argmax(1), te_repo_summary).float().mean().item() * batch_size
+                    acc_val += torch.eq(outputs_val.argmax(1), te_repo_summary).float().mean().item() * te_repo_summary.size(0)
+                    n_token += te_repo_summary.size(0)
 
                     # 将预测结果转为文字
                     te_repo_summary = te_repo_summary.view(batch_size, -1)
@@ -207,12 +214,20 @@ def train(opt):
                     # 记录验证集结果
                     for pred, target in zip(preds_val_result, targets_result):
                         # 计算 Bleu Score
+                        bleu_one += sentence_bleu([target.split()], pred.split(), weights=(1, 0, 0, 0))
+                        bleu_two += sentence_bleu([target.split()], pred.split(), weights=(0, 1, 0, 0))
+                        bleu_three += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 1, 0))
+                        bleu_four += sentence_bleu([target.split()], pred.split(), weights=(0, 0, 0, 1))
                         bleu_val += computebleu(pred, target)
                         result_val.append((pred, target))
                     n += batch_size
                 loss_val = loss_val / len(valid_generator)
-                acc_val = acc_val / n
+                acc_val = acc_val / n_token
                 bleu_val = bleu_val / n
+                bleu_one = bleu_one / n
+                bleu_two = bleu_two / n
+                bleu_three = bleu_three / n
+                bleu_four = bleu_four / n
                 val_losses.append(loss_val)
                 val_bleu_scores.append(bleu_val)
                 # 储存结果
@@ -223,12 +238,16 @@ def train(opt):
                     best_loss = loss_val
                     best_epoch = epoch
 
-                print("@@@@@@ Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu-4 score: {}".format(
+                print("@@@@@@ Epoch Valid Test: {}/{}, Lr: {}, Loss: {}, Accuracy: {}, Bleu1 {} Bleu2 {} Bleu3 {} Bleu4 {} Bleu-4 score: {}".format(
                     epoch + 1,
                     opt.num_epoches,
                     optimizer.param_groups[0]['lr'],
                     loss_val,
                     acc_val,
+                    bleu_one,
+                    bleu_two,
+                    bleu_three,
+                    bleu_four,
                     bleu_val))
                 writer.add_scalar('Valid/Loss', loss_val, epoch)
                 writer.add_scalar('Valid/Accuracy', acc_val, epoch)
@@ -242,8 +261,7 @@ def train(opt):
                               "best_epoch": best_epoch}
                 path_checkpoint = opt.saved_path + os.sep + "checkpoint_{}.pkl".format(epoch + 1)
                 torch.save(checkpoint, path_checkpoint)
-                torch.cuda.empty_cache()
-                print("Clear the cuda cache")
+
 
     writer.close()
     # 绘图
