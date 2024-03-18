@@ -107,7 +107,7 @@ def train(opt):
     print(f"Total parameters: {total_params}")
     print(f"Trainable parameters: {trainable_params}")
     infoSummary(model,
-                [(opt.batch_size, opt.max_package_length, opt.max_file_length, opt.max_token_length),
+                [(opt.batch_size, opt.max_file_length, opt.max_token_length),
                  (opt.batch_size, opt.max_summary_length),
                  (1,)],
                 dtypes=[torch.long, torch.long, torch.float])
