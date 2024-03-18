@@ -28,8 +28,8 @@ def get_args():
     parser.add_argument("--t5_path", type=str,
                         default="/home/LAB/guanz/gz_graduation/code_embedding_pretrained_model/google-flan-t5-large")
     parser.add_argument("--output_path", type=str, default="predictions_t5")
-    parser.add_argument("--max_token_length", type=int, default=500)
-    parser.add_argument("--max_summary_length", type=int, default=100)
+    parser.add_argument("--max_token_length", type=int, default=600)
+    parser.add_argument("--max_summary_length", type=int, default=30)
     parser.add_argument("--lang", type=str, default="java")
     parser.add_argument("--checkpoint", type=int, default="-1")
     args = parser.parse_args()
