@@ -67,7 +67,7 @@ def process_token(str):
     # sentence = ' '.join(tokens)
     # tokens = lemmatize_sentence(sentence)
     # 词干提取
-    tokens = [porter_stemmer.stem(x) for x in tokens]
+    # tokens = [porter_stemmer.stem(x) for x in tokens]
 
     return ' '.join(tokens)
 
@@ -165,9 +165,9 @@ if __name__ == '__main__':
     # print(handle_file_summaries(repo_name, file_summary))
     handle_csv()
     # 打印信息
-    print('###### File summary level')
-    print_data_status(file_summary_length)
-    print('###### Repo summary level')
-    print_data_status(repo_summary_length)
-    print('###### File level')
-    print_data_status(file_length)
+    # print('###### File summary level')
+    # print_data_status(file_summary_length)
+    # print('###### Repo summary level')
+    # print_data_status(repo_summary_length)
+    # print('###### File level')
+    # print_data_status(file_length)
